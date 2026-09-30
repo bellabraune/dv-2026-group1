@@ -12,7 +12,7 @@
 
 **Group members:**
 
-- Firstname Lastname
+- Isabella Braune 
 
 **Research question:** One sentence stating what you're investigating.
 
