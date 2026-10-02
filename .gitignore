@@ -39,6 +39,7 @@ data/
 
 # Individual work ----
 assignment-1/
+CONTEXT/
 
 # RStudio and R housekeeping ----
 # RStudio's per-user project state (created when you open the project)
