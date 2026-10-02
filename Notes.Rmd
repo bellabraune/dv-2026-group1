@@ -1,0 +1,35 @@
+---
+title: "Notes"
+output: html_document
+---
+
+```{r}
+
+```
+
+# General Shared Notes about the project 
+
+## Part 1
+
+Divide the plots per tests because the test scores are currently comparable or on the scale. They must be scaled. 
+
+
+
+### Brainstorm Exploratory Visualization ideas
+
+Which schools use what type of tests? Does this depend on the region of the Netherlands?
+
+Measure of quality of the school: see if it correlates with type of test chosen by school. 
+- Scatter plot with a fitted linear model (geom_smooth)
+
+
+The average test score, and the average teacher score, per tests/scores
+
+
+
+
+
+
+
+
+
