@@ -14,10 +14,11 @@
 
 - Isabella Braune 
 - Matheus Nacif
+- Ilinca Anton
 
 **Research question:** One sentence stating what you're investigating.
 
-**Level:** Analytics / Inference / Prediction 
+**Level:** Inference
 
 ## About this project
 
