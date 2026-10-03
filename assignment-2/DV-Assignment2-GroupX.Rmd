@@ -1,0 +1,60 @@
+---
+title: "DV Assignment 2: [Your Title Here]"
+author: "Group 1: Matheus Nacif, Ilinca Anton, Isabella Braune"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# clear environment so knitting only depends on what's in this file
+rm(list = ls())
+
+# installs (if missing) and loads every package this project uses - add any
+# new packages to scripts/00-packages.R, not here
+source("../scripts/00-packages.R")
+
+# downloads the data into data/raw/ if you don't already have it, then loads
+# eindscores, referentieniveaus, schooladviezen and schoolweging into this
+# session - see scripts/01-get-data.R for what each one contains
+source(here("scripts", "01-get-data.R"))
+```
+
+## Research question
+
+RQ3. Do schools with similar test results give similar secondary-school advice?
+
+Level: Inference
+
+Target audience: secondary schools, or policymakers.
+
+Instruction: At the end of primary school, every student receives a school advice for a secondary-school track (PRO, VMBO, HAVO, VWO, see the codebook). The advice is based on the teacher’s judgement and on the doorstroomtoets. In this RQ, you will investigate how closely a school’s advice follows its students’ test results, and whether this differs between schools with a more or less disadvantaged student population.
+
+Relate a measure of the school’s advice (e.g. pct_havo_plus) to a measure of its test results (pct_maths_1s and/or pct_reading_2f), and test whether schoolweging moderates this relationship. Do two schools with the same results give the same advice, regardless of who their students are?
+
+*What are you investigating, and why does it matter? Who is the target audience for your final visualization, and how does that shape your choices?*
+
+## Exploratory process
+
+*Describe how you explored the data before settling on your final visualization. Include at least one exploratory plot below, and a short note on what it told you (or didn't).*
+
+```{r exploratory-plot}
+```
+
+## Final visualization
+
+*Your final, explanatory visualization goes below. Include a short write-up: what does it communicate, why is this the best way to communicate it, and how robust is the finding?*
+
+```{r final-plot}
+```
+
+## Conclusion
+
+*What can you conclude from your visualization? What are the limitations of this analysis?*
+
+---
+
+**Before submitting:** run the lintr check on this file, and re-knit from a clean environment (`rm(list = ls())`, already done above) to make sure everything reproduces from scratch.

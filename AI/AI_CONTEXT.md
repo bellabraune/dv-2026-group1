@@ -161,3 +161,92 @@ The project's provider-independent score averages three target-level attainment
 rates: `100 * REKENEN_1S / n_rekenen + 100 * LV_2F / n_lezen + 100 * TV_2F /
 n_taal`. Because these are reference-level shares, the composite is comparable
 across providers even though the raw `*_GEM` scores are not.
+
+## Code Styling
+
+These conventions are used in the assignment Rmd files and should be preserved
+in any future work on this project.
+
+### General philosophy
+
+- **Simple and elegant.** This is data-analysis code, not software engineering.
+  Prefer one-liners and short chains when they make the code easier to read.
+  No helper functions, no S4 classes, no over-engineered abstractions.
+- **Logical flow.** Rmd chunks should follow a readable narrative: data in →
+  transform → plot → annotate. Each chunk should be self-contained enough to
+  understand in sequence.
+- **Explain the non-obvious.** Add a one-line `#` comment above a chunk when
+  its purpose is not self-evident from the code alone (e.g. a join that drops
+  rows, a filter that changes the analysis unit). Do not restate what the code
+  already says.
+
+### Pipes and data transformations
+
+- New pipe `|>` throughout (not `%>%`).
+- Pipe at the **start** of continuation lines.
+- Standard tidyverse chain: `filter()` → `mutate()` → `group_by()` →
+  `summarise()` → `.groups = "drop"`.
+- `ungroup()` after `slice_max()`.
+
+### Indentation and line length
+
+- 2-space indent.
+- One function call per line when the chain is short; break arguments
+  one-per-line when the call exceeds ~80 chars.
+- Continuation lines align with the first argument (not the pipe).
+
+### Naming
+
+| Context | Convention | Examples |
+|---|---|---|
+| Raw data columns (Dutch) | ALL_CAPS or as-source | `INSTELLINGSCODE`, `AANTAL`, `GEM`, `schoolweging` |
+| Derived / computed columns | snake_case English | `n_students`, `primary_provider`, `hover_text` |
+| Plot objects (static) | `fig_*` | `fig_density`, `fig_weight` |
+| Plot objects (interactive) | descriptive name | `part2_plot` |
+| Intermediate data frames | snake_case noun | `school_data`, `plot_data`, `part2_data` |
+
+### ggplot2
+
+- Structure: `ggplot(data, aes(...))` **+** `geom_*()` **+** `scale_*()`
+  **+** `labs()` **+** `theme()`.
+- `theme_minimal()` (or `theme_bw()`) as base, then `theme(...)` overrides.
+- `legend.position` set explicitly (`"top"`, `"right"`, `"none"`).
+- Manual scales with named `values = c(...)` and `name = "..."` for the
+  legend title.
+- Chunk headers carry `fig.height`, `fig.width`, `fig.align` for layout.
+
+### plotly
+
+- **ggplot2 is the default.** All static plots use ggplot2.
+- **plotly only when ggplotly is insufficient.** The only justification for
+  using `plot_ly()` directly is when `ggplotly()` cannot achieve the required
+  behaviour (e.g. two independent legends, custom `layout()` calls that
+  `ggplotly` overwrites). The reasoning should be noted in a comment.
+- `plot_ly(...)` **|** `add_markers(...)` **|** `layout(...)`.
+- Tooltip: pre-build an `hover_text` column with
+  `paste0("<b>name</b><br>", ...)` and use `hoverinfo = "text"`.
+- Point sizing: `size = ~var` + `sizes = c(min, max)`.
+- Custom legend groups: `legendgroup` + `legendgrouptitle = list(text = ...)`.
+- Auxiliary legend markers:
+  `add_markers(..., inherit = FALSE, hoverinfo = "skip")`.
+
+### Comments
+
+- Short, one-line `#` comments above non-obvious code.
+- Explain **why**, not what (e.g. `"# DUO writes '<5' for small counts -> NA"`).
+- No comment blocks; keep them to 1–2 lines max.
+
+### Chunk headers
+
+- `{r setup}` — global options, `rm(list = ls())`, `library()` calls,
+  `source()`.
+- `{r data-prep-N}` — named prep chunks.
+- `{r}` — unnamed chunks for plots or single steps.
+- Figure chunks:
+  `{r part-a-combine, fig.height = 6, fig.width = 11.5, fig.align = "center"}`.
+- `echo = TRUE` set once via `knitr::opts_chunk$set(echo = TRUE)`.
+
+### Packages
+
+- `tidyverse`, `cowplot`, `readODS`, `plotly` (loaded in setup chunk).
+- Addittional packages that are useful to be added should be justifiable and confirmed before addition.
