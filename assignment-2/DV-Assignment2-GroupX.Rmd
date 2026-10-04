@@ -48,7 +48,6 @@ scale is more faithful to how much of a gap a track move represents. We can pick
 
 ## Exploratory process
 
-
 #### Figure 1: Distribution of school weighting across schools
 ```{r exploratory-plot-1, fig.height = 4, fig.width = 6, fig.align = "center"}
 # Drop the 119 empty locations (0 students, no schoolweging)
