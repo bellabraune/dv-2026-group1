@@ -1,0 +1,140 @@
+---
+title: "DV Assignment 2: [Your Title Here]"
+author: "Group 1: Matheus Nacif, Ilinca Anton, Isabella Braune"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# clear environment so knitting only depends on what's in this file
+rm(list = ls())
+
+# installs (if missing) and loads every package this project uses - add any
+# new packages to scripts/00-packages.R, not here
+source("../scripts/00-packages.R")
+
+# downloads the data into data/raw/ if you don't already have it, then loads
+# eindscores, referentieniveaus, schooladviezen and schoolweging into this
+# session - see scripts/01-get-data.R for what each one contains
+source(here("scripts", "01-get-data.R"))
+```
+
+## Research question
+
+RQ3. Do schools with similar test results give similar secondary-school advice?
+
+Level: Inference
+
+Target audience: secondary schools, or policymakers.
+
+Instruction: At the end of primary school, every student receives a school advice for a secondary-school track (PRO, VMBO, HAVO, VWO, see the codebook). The advice is based on the teacher’s judgement and on the doorstroomtoets. In this RQ, you will investigate how closely a school’s advice follows its students’ test results, and whether this differs between schools with a more or less disadvantaged student population.
+
+Relate a measure of the school’s advice (e.g. pct_havo_plus) to a measure of its test results (pct_maths_1s and/or pct_reading_2f), and test whether schoolweging moderates this relationship. Do two schools with the same results give the same advice, regardless of who their students are?
+
+### What are we investigating, why does it matter?
+Every primary-school pupil receives a secondary-track advice at the end of group 8 (PRO, VMBO, HAVO, or VWO) that sets their entire secondary trajectory. This advice is based on the teacher's judgement and on the doorstroomtoets, a standardized test designed to be comparable across schools. We ask whether, holding test performance constant, a school's advice still depends on how socio-economically disadvantaged its student body is (`schoolweging`). Concretely, we relate each school's share of students advised to HAVO/VWO to its share reaching the reference level in maths and/or reading, and test whether `schoolweging` shifts that relationship. It matters because if disadvantaged schools systematically assign lower tracks to students with the same demonstrated performance, then a standardized test is failing its purpose and students are being pushed down the track on the basis of context rather than ability, a live fairness concern in the Dutch debate over transfer advice.
+
+### Who is the target Audience, how does that shape the choices?
+Our primary audience is **policymakers and the general public** (a newspaper-graphic reader), with school boards as a secondary audience. Since this reader is not a statistician, the visualization must carry *one* legible conclusion (advice tracks test results, and disadvantage shifts it by this much) expressed in concrete, relatable units (e.g. percentage points of students advised upward) rather than coefficients or p-values. That pushes us toward a small number of clear encodings (a fit for advantaged vs. disadvantaged schools, or a gap/residual line) and toward a single highlighted pattern, rather than a dense multivariate plot.
+
+
+#### To Discuss:
+We need to check how we want to summarise the variables. Two candidates: (1) `pct_havo_plus` — the share of students advised to HAVO or VWO, a single binary-style metric that is easy for a general audience to read; or (2) a numeric track scale (PRO = 1, VMBO = 2, HAVO = 3, VWO = 6) averaged per school, which uses the full range of the advice and does not collapse the lower tracks (PRO, SBO, VMBO) into one bucket. The choice matters: the binary is simpler to communicate, while the numeric
+scale is more faithful to how much of a gap a track move represents. We can pick between them once the exploratory plots make clear which measure carries the pattern we want to show.
+
+## Exploratory process
+
+*Describe how you explored the data before settling on your final visualization. Include at least one exploratory plot below, and a short note on what it told you (or didn't).*
+
+```{r exploratory-plot-1, fig.height = 4, fig.width = 6, fig.align = "center"}
+# Drop the 119 empty locations (0 students, no schoolweging)
+sw <- schoolweging |>
+  filter(!is.na(schoolweging))
+
+sw |>
+  ggplot(aes(x = schoolweging)) +
+  geom_histogram(bins = 40, fill = "#2878CC", color = "white", alpha = 0.7) +
+  geom_density(fill = "#2878CC", alpha = 0.08) +
+  geom_vline(
+    xintercept = median(sw$schoolweging),
+    linetype = "dashed", color = "grey30"
+  ) +
+  annotate(
+    "text",
+    x = median(sw$schoolweging) + 0.5,
+    y = max(table(cut(sw$schoolweging, breaks = 40))) * 0.85,
+    label = paste0("median = ", round(median(sw$schoolweging), 1)),
+    hjust = 0, size = 3.5, color = "grey30"
+  ) +
+  scale_x_continuous(limits = c(18, 43)) +
+  labs(
+    x = "School weighting (higher = more disadvantaged)",
+    y = "Number of schools"
+  ) +
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank())
+```
+
+The distribution of `schoolweging` is roughly bell-shaped, centred around 29–30, with the bulk of schools falling between 22 and 37. There is no natural bimodal split — the spread is continuous. For the moderation analysis we'll need to pick a threshold (e.g. median split at ~29.5, or tertiles) to define "low" vs "high" disadvantage groups; the plot makes clear that no single school is an outlier, and that both tails have enough mass to compare.
+
+```{r exploratory-plot-2, fig.height = 4.5, fig.width = 6.5, fig.align = "center"}
+# the count columns are character ("<5" privacy suppression) -> numeric first
+adv_cols <- c("PRO", "VMBO_B", "VMBO_B_K", "VMBO_K", "VMBO_K_GT", "VMBO_GT",
+              "VMBO_GT_HAVO", "HAVO", "HAVO_VWO", "VWO", "ADVIES_NIET_MOGELIJK")
+to_num <- function(x) { v <- suppressWarnings(as.numeric(x)); v[is.na(v)] <- 2.5; v }
+
+# pull the two id columns out before mutating (their headers carry a
+# hidden character and their position differs between the two files)
+adv_ids <- schooladviezen[, 3:4]
+ref_ids <- referentieniveaus[, 2:3]
+
+adv <- schooladviezen |>
+  mutate(across(all_of(adv_cols), to_num)) |>
+  mutate(
+    n_advice = rowSums(across(all_of(adv_cols))),
+    pct_havo_plus = 100 * (HAVO + HAVO_VWO + VWO) / n_advice
+  )
+
+ref <- referentieniveaus |>
+  mutate(n_ref = to_num(REKENEN_1S) + to_num(LV_2F))
+
+plot_data <- data.frame(inst = adv_ids[[1]], vest = adv_ids[[2]],
+                        n_advice = adv$n_advice,
+                        pct_havo_plus = adv$pct_havo_plus) |>
+  inner_join(
+    data.frame(inst = ref_ids[[1]], vest = ref_ids[[2]], n_ref = ref$n_ref),
+    by = c("inst", "vest")
+  ) |>
+  filter(n_advice > 0, n_ref > 0)
+
+plot_data |>
+  ggplot(aes(x = n_ref, y = pct_havo_plus)) +
+  geom_point(alpha = 0.3, size = 1, color = "#2878CC") +
+  geom_smooth(method = "lm", color = "#EB6734", se = TRUE) +
+  labs(
+    x = "Students reaching the reference level (maths 1S + reading 2F)",
+    y = "% of students advised to HAVO or higher"
+  ) +
+  theme_minimal()
+```
+
+Across the 5,921 schools, the relationship between test result and advice is clearly positive (correlation 0.50): schools whose students reach the reference level in maths and reading advise a larger share of them to HAVO or VWO. On the whole, advice tracks demonstrated performance. The moderation question is whether `schoolweging` shifts this relationship — i.e. whether, at the *same* test result, a more disadvantaged school pushes fewer of its students up the track. That is the next step.
+
+## Final visualization
+
+*Your final, explanatory visualization goes below. Include a short write-up: what does it communicate, why is this the best way to communicate it, and how robust is the finding?*
+
+```{r final-plot}
+```
+
+## Conclusion
+
+*What can you conclude from your visualization? What are the limitations of this analysis?*
+
+---
+
+**Before submitting:** run the lintr check on this file, and re-knit from a clean environment (`rm(list = ls())`, already done above) to make sure everything reproduces from scratch.

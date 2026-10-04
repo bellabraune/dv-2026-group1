@@ -1,0 +1,19 @@
+Context: In order to have a shared context, we have made a context.md file with the context we thought was important.
+We keep updating it throughout the project as new things come up.
+The context model was first produced using a local AI model (Qwen3.8) corrected manually, and updated throughout the process.
+
+In addition, an AGENTS.md file was also available insie the repo. This was necessary specifically for local AI agents using throughout the process
+and for the eventuals uses of Github Copilot. 
+
+Constraints: We created a context file for code styling for R using Lintr and tidyverse. This context was added to the conversations where the
+goal was to produce code. The first assignment was used as a base for code styling.
+Additionally, the models were constrained to always explain their reasoning for the coding decisions.
+
+
+Verification: We decided to make it clear to eachother where AI-generated code was made and asked eachother to give peer-feedback on those sections.
+This way we were able to check if we all understood the code and if it follows our goals
+
+
+Models used:
+
+

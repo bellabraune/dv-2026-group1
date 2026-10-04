@@ -4,7 +4,6 @@ data/
 # Common data formats, in case data ends up outside data/
 *.csv
 *.tsv
-*.txt
 *.dat
 *.tab
 *.rda
@@ -40,6 +39,7 @@ data/
 
 # Individual work ----
 assignment-1/
+CONTEXT/
 
 # RStudio and R housekeeping ----
 # RStudio's per-user project state (created when you open the project)
@@ -70,3 +70,6 @@ Thumbs.db
 *.tmp
 *.bak
 *.log
+
+# Local Model session context files
+SESSION_1.md
