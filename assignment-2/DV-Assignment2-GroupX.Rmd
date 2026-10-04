@@ -99,30 +99,39 @@ adv <- schooladviezen |>
     pct_havo_plus = 100 * (HAVO + HAVO_VWO + VWO) / n_advice
   )
 
+# proportion of pupils reaching the reference level, averaged across
+# maths (1S) and reading (2F) — removes school size as a confound
 ref <- referentieniveaus |>
-  mutate(n_ref = to_num(REKENEN_1S) + to_num(LV_2F))
+  mutate(
+    tot_m = to_num(REKENEN_LAGER1F) + to_num(REKENEN_1F) +
+            to_num(REKENEN_1S)     + to_num(REKENEN_2F),
+    tot_r = to_num(LV_LAGER1F)     + to_num(LV_1F)      +
+            to_num(LV_2F),
+    pct_ref = (100 * to_num(REKENEN_1S) / tot_m +
+               100 * to_num(LV_2F)       / tot_r) / 2
+  )
 
 plot_data <- data.frame(inst = adv_ids[[1]], vest = adv_ids[[2]],
                         n_advice = adv$n_advice,
                         pct_havo_plus = adv$pct_havo_plus) |>
   inner_join(
-    data.frame(inst = ref_ids[[1]], vest = ref_ids[[2]], n_ref = ref$n_ref),
+    data.frame(inst = ref_ids[[1]], vest = ref_ids[[2]], pct_ref = ref$pct_ref),
     by = c("inst", "vest")
   ) |>
-  filter(n_advice > 0, n_ref > 0)
+  filter(n_advice > 0, !is.na(pct_ref))
 
 plot_data |>
-  ggplot(aes(x = n_ref, y = pct_havo_plus)) +
+  ggplot(aes(x = pct_ref, y = pct_havo_plus)) +
   geom_point(alpha = 0.3, size = 1, color = "#2878CC") +
   geom_smooth(method = "lm", color = "#EB6734", se = TRUE) +
   labs(
-    x = "Students reaching the reference level (maths 1S + reading 2F)",
+    x = "% of students reaching the reference level (maths 1S + reading 2F)",
     y = "% of students advised to HAVO or higher"
   ) +
   theme_minimal()
 ```
 
-Across the 5,921 schools, the relationship between test result and advice is clearly positive (correlation 0.50): schools whose students reach the reference level in maths and reading advise a larger share of them to HAVO or VWO. On the whole, advice tracks demonstrated performance. The moderation question is whether `schoolweging` shifts this relationship — i.e. whether, at the *same* test result, a more disadvantaged school pushes fewer of its students up the track. That is the next step.
+Across the 5,921 schools, the relationship between test result and advice is clearly positive (correlation 0.69): schools whose students reach the reference level in maths and reading advise a larger share of them to HAVO or VWO. On the whole, advice tracks demonstrated performance. The moderation question is whether `schoolweging` shifts this relationship — i.e. whether, at the *same* test result, a more disadvantaged school pushes fewer of its students up the track. That is the next step.
 
 ## Final visualization
 
