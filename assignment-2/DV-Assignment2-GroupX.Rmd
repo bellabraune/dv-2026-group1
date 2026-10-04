@@ -48,8 +48,8 @@ scale is more faithful to how much of a gap a track move represents. We can pick
 
 ## Exploratory process
 
-*Describe how you explored the data before settling on your final visualization. Include at least one exploratory plot below, and a short note on what it told you (or didn't).*
 
+#### Figure 1: Distribution of school weighting across schools
 ```{r exploratory-plot-1, fig.height = 4, fig.width = 6, fig.align = "center"}
 # Drop the 119 empty locations (0 students, no schoolweging)
 sw <- schoolweging |>
@@ -81,11 +81,16 @@ sw |>
 
 The distribution of `schoolweging` is roughly bell-shaped, centred around 29–30, with the bulk of schools falling between 22 and 37. There is no natural bimodal split — the spread is continuous. For the moderation analysis we'll need to pick a threshold (e.g. median split at ~29.5, or tertiles) to define "low" vs "high" disadvantage groups; the plot makes clear that no single school is an outlier, and that both tails have enough mass to compare.
 
+#### Figure 2: Share of students advised HAVO or higher, by share reaching the reference level
 ```{r exploratory-plot-2, fig.height = 4.5, fig.width = 6.5, fig.align = "center"}
 # the count columns are character ("<5" privacy suppression) -> numeric first
 adv_cols <- c("PRO", "VMBO_B", "VMBO_B_K", "VMBO_K", "VMBO_K_GT", "VMBO_GT",
               "VMBO_GT_HAVO", "HAVO", "HAVO_VWO", "VWO", "ADVIES_NIET_MOGELIJK")
-to_num <- function(x) { v <- suppressWarnings(as.numeric(x)); v[is.na(v)] <- 2.5; v }
+to_num <- function(x) {
+  v <- suppressWarnings(as.numeric(x))
+  v[is.na(v)] <- 2.5
+  v
+}
 
 # pull the two id columns out before mutating (their headers carry a
 # hidden character and their position differs between the two files)
@@ -104,12 +109,13 @@ adv <- schooladviezen |>
 ref <- referentieniveaus |>
   mutate(
     tot_m = to_num(REKENEN_LAGER1F) + to_num(REKENEN_1F) +
-            to_num(REKENEN_1S)     + to_num(REKENEN_2F),
-    tot_r = to_num(LV_LAGER1F)     + to_num(LV_1F)      +
-            to_num(LV_2F),
-    pct_ref = (100 * to_num(REKENEN_1S) / tot_m +
-               100 * to_num(LV_2F)       / tot_r) / 2
+      to_num(REKENEN_1S) + to_num(REKENEN_2F),
+    tot_r = to_num(LV_LAGER1F) + to_num(LV_1F) + to_num(LV_2F),
+    pct_m = 100 * to_num(REKENEN_1S) / tot_m,
+    pct_r = 100 * to_num(LV_2F) / tot_r,
+    pct_ref = (pct_m + pct_r) / 2
   )
+
 
 plot_data <- data.frame(inst = adv_ids[[1]], vest = adv_ids[[2]],
                         n_advice = adv$n_advice,
@@ -131,19 +137,84 @@ plot_data |>
   theme_minimal()
 ```
 
-Across the 5,921 schools, the relationship between test result and advice is clearly positive (correlation 0.69): schools whose students reach the reference level in maths and reading advise a larger share of them to HAVO or VWO. On the whole, advice tracks demonstrated performance. The moderation question is whether `schoolweging` shifts this relationship — i.e. whether, at the *same* test result, a more disadvantaged school pushes fewer of its students up the track. That is the next step.
+Figure 2 shows that across the 5,921 schools, the relationship between test result and advice is clearly positive (correlation 0.69): schools whose students reach the reference level in maths and reading advise a larger share of them to HAVO or VWO. On the whole, advice tracks demonstrated performance. 
 
-## Final visualization
+However, our test measure averages two different subjects. Maths and reading measure different skills, and their target levels can differ in difficulty. Averaging them assumes that advice responds to both subjects in the same way. 
 
-*Your final, explanatory visualization goes below. Include a short write-up: what does it communicate, why is this the best way to communicate it, and how robust is the finding?*
+If advice actually depends more on one subject than the other, averaging them weakens this claim. This would in turn make it unclear what "schools with the same results" means, and that comparison is the core of our research question. We therefore looked at the two subjects separately in figure 3, relating each school's share of VWO advice, the highest track, to its share of students reaching the maths target (1S) and the reading target (2F).
 
-```{r final-plot}
+#### Figure 3: 
+```{r exploratory-plot-3, fig.height = 4.5, fig.width = 6.5, fig.align = "center"}
+
+# share of students reaching the target level, per subject separately
+ref_subjects <- referentieniveaus |>
+  mutate(
+    tot_m = to_num(REKENEN_LAGER1F) + to_num(REKENEN_1F) + to_num(REKENEN_1S),
+    tot_r = to_num(LV_LAGER1F) + to_num(LV_1F) + to_num(LV_2F),
+    maths = 100 * to_num(REKENEN_1S) / tot_m,
+    reading = 100 * to_num(LV_2F) / tot_r
+  )
+
+# one row per school per subject, with readable subject names for the legend
+subject_data <- data.frame(
+  inst = adv_ids[[1]], vest = adv_ids[[2]],
+  n_advice = adv$n_advice,
+  pct_vwo = 100 * adv$VWO / adv$n_advice
+) |>
+  inner_join(
+    data.frame(
+      inst = ref_ids[[1]], vest = ref_ids[[2]],
+      maths = ref_subjects$maths, reading = ref_subjects$reading
+    ),
+    by = c("inst", "vest")
+  ) |>
+  filter(n_advice > 0, !is.na(maths), !is.na(reading)) |>
+  pivot_longer(
+    c(maths, reading),
+    names_to = "subject", values_to = "pct_target"
+  ) |>
+  mutate(
+    label = if_else(subject == "maths", "Maths (1S)", "Reading (2F)")
+  ) # Make readable labels for the legend
+
+
+subject_data |>
+  ggplot(
+    aes(x = pct_target, y = pct_vwo, colour = label, fill = label)
+  ) +
+  # shape 21 is a filled circle, so the points use the fill colours
+  geom_point(shape = 21, stroke = 0, alpha = 0.3, size = 1.3) +
+  geom_smooth(
+    method = "lm", formula = y ~ x, se = TRUE,
+    alpha = 0.25, linewidth = 1.3
+  ) +
+  # light colours for the points, darker shades of the same for the lines
+  scale_fill_manual(values = c("#009E73", "#CC79A7"), name = NULL) +
+  scale_colour_manual(values = c("#00553E", "#7A2E5C"), name = NULL) +
+  scale_x_continuous(breaks = seq(0, 100, by = 25)) +
+  scale_y_continuous(breaks = seq(0, 100, by = 25)) +
+  coord_cartesian(xlim = c(0, 100), ylim = c(0, 100), expand = FALSE) +
+  guides(fill = guide_legend(override.aes = list(alpha = 1, size = 2.5))) +
+  labs(
+    x = "% of students reaching the target level",
+    y = "% of students advised VWO"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "top")
+
+
+# Looking at the correlation:
+subject_data |>
+  group_by(subject) |>
+  summarise(r = cor(pct_target, pct_vwo))
 ```
 
+Looking at Figure 3, we observe that advice is moderately related to both: slightly more strongly to maths (r = 0.55) than to reading (r = 0.49). Since the difference is small, advice does not appear to depend mainly on one subject. This supports using the average of both subjects as our measure of test results. Because the data is at school level, this describes how schools' advice relates to their overall results, not how individual students are advised.
+
+
+
 ## Conclusion
+School weighting is spread continuously across schools, roughly bell-shaped around 29–30, with enough schools at both ends to compare more and less disadvantaged populations (Figure 1). Schools with better test results clearly advise more students to HAVO or higher (r = 0.69; Figure 2), so on the whole, advice follows demonstrated performance. Looking at the two subjects separately, advice is related to maths (r = 0.55) and reading (r = 0.49) about equally, which supports using the average of both as our measure of test results (Figure 3).
 
-*What can you conclude from your visualization? What are the limitations of this analysis?*
 
----
-
-**Before submitting:** run the lintr check on this file, and re-knit from a clean environment (`rm(list = ls())`, already done above) to make sure everything reproduces from scratch.
+At the same time, figure 2 and 3 both show that schools with similar test results still differ considerably in how many students they advise to a higher track. The question for the next phase is whether schoolweging explains part of that difference. At the same test results, does a more disadvantaged school advise fewer of its students to a higher track?
