@@ -4,6 +4,31 @@ Shared, living context for this project. Keep this file updated as the project
 progresses so any AI assistant (or group member) can pick up the work without
 re-reading every source.
 
+## Research Question
+
+**RQ3 (inference):** Do schools with similar test results give similar
+secondary-school advice?
+
+Concretely: relate each school's share of students advised to HAVO/VWO
+(`pct_havo_plus`) to a measure of test results (reference-level attainment),
+and test whether `schoolweging` **moderates** that relationship — i.e. do two
+schools with the *same* test results give the *same* advice, regardless of how
+disadvantaged their student body is?
+
+- **Target audience:** policymakers / general public (a newspaper-graphic
+  reader); school boards as a secondary audience.
+- **Implication for the visualization:** one legible conclusion in concrete
+  units (percentage points advised up/down), not coefficients or p-values.
+- **Open decision (to resolve in EDA):** measure of advice = `pct_havo_plus`
+  (share HAVO+VWO) **vs** a numeric track scale (PRO=1, VMBO=2, HAVO=3, VWO=6).
+  Test outcome = reference-level attainment (maths `REKENEN_1S` and/or reading
+  `LV_2F`).
+
+The working file is `assignment-2/DV-Assignment2-GroupX.Rmd` (group: Matheus
+Nacif, Ann1e Johansson, + one more). It has the RQ text, an `exploratory-plot-1`
+chunk (schoolweging distribution) and `exploratory-plot-2` chunk (test result vs
+advice scatter) already filled in.
+
 ## Data Context
 
 This project works with four files on the Dutch **doorstroomtoets** (the
@@ -146,6 +171,38 @@ schools (mostly `Sbo` special-primary schools) have **no** row in
 4. **School-level, not pupil-level.** Each row is a school; you know which
    provider a school used and its aggregate score/level counts — not
    individual pupil scores. Conclusions are about schools, not pupils.
+
+### Silent-failure gotchas (discovered session 1 — cost significant time)
+
+These do **not** throw errors or warnings; they produce wrong results silently.
+
+1. **Non-breaking space (U+00A0) in `INSTILLINGSCODE` header** in
+   `schooladviezen`. `names(schooladviezen)[3]` *displays* as
+   `INSTILLINGSCODE` but `names(adv) == "INSTILLINGSCODE"` is `FALSE` and
+   `adv$INSTILLINGSCODE` returns `NULL`. Use **positional** access
+   (`adv[, 3]`) or normalize the header with `gsub("\u00a0", "", names(adv))`.
+
+2. **Different column positions for id columns across files.**
+   `schooladviezen` has `PEILDATUM_LEERLINGEN` + `PRIKDATUM` as leading
+   columns, so `INSTILLINGSCODE` is at **position 3** and `VESTIGINGSCODE` at
+   **position 4**. `referentieniveaus` has only `PEILDATUM` leading, so
+   `INSTILLINGSCODE` is at **position 2** and `VESTIGINGSCODE` at
+   **position 3**. Any positional indexing must differ per file.
+
+3. **`sum(across(cols))` inside `mutate()`** silently returns near-zero
+   (it evaluates on the data mask, not the full row). Use
+   `rowSums(across(all_of(cols)))` or `rowSums(df[, cols])` instead.
+   This produced a spurious correlation of 0.94 vs the correct 0.50.
+
+4. **`n_advice = 0` rows produce `NaN`/`Inf` percentages.** ~54 schools have
+   no advice data recorded. Always `filter(n_advice > 0)` after computing
+   `pct_havo_plus`, otherwise `ggsave()` silently drops them but `cor()`
+   and `mean()` include the NaNs.
+
+5. **`schoolweging` OVS join.** `OVT` looks like `"00AP|C1"`. Split with
+   `sub("\\|.*$", "", OVT)` → `INSTILLINGSCODE`, `sub("^.*\\|", "", OVT)` →
+   `VESTIGINGSCODE`. 119 locations (all `aantal_leerlingen = 0`, i.e. empty
+   Sbo branches) have `NA` in `schoolweging` — drop them before plotting.
 
 ### Derived "primary provider" pattern (used consistently)
 

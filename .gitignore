@@ -70,3 +70,6 @@ Thumbs.db
 *.tmp
 *.bak
 *.log
+
+# Local Model session context files
+SESSION_1.md
