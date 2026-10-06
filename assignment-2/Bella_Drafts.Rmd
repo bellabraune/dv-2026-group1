@@ -1,0 +1,210 @@
+---
+title: "Bella_Drafts"
+author: "Isabella Braune"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+**Exploratory Analysis**
+
+---
+
+# Considerations 
+In order to explore the RQ, the data will need to be filtered and cleaned. Firstly, the worksheet, data description and assignment 1, highlight several aspects of the data which should be considered in the analysis. 
+
+**a. Schools differ in size, but rows contain one school.**  
+The data concerns information at the school-level not the student-level. Thus make sure to draw conclusions considering this information. Choices should be made as to whether to weigh schools by their number of children. Be cautious with making conclusions about individual students. 
+
+**b. How to handle the <5 counts?**  
+DUO hides any count below 5 and writes the text "<5" instead. This happens a lot in referentieniveaus and schooladviezen. If you simply drop the schools with a "<5" somewhere,
+almost no schools are left over. Thus either replace these with a specific number or try out different values to see if it changes the results? (robustness check).  
+
+
+**c. Should we include provider as control variable?**  
+If so, eindscores has seperate columns for the providers in a wide format, instead of one “provider” column. Use pivot_longer() to get one row per school per provider, and keep the provider with the most students (about 96% of schools use exactly one provider). Also, only compare providers based on the reference level and not on the average scores. As certain schools might systematically choose for a specific type of doorstroomtoets, and some providers are associated with larger discrepencies between scores and schooladvice. 
+
+
+
+# Data Descriptives 
+
+## Schooladviezen 
+The csv file "schooladviezen_2024-2025.csv" contains the number of students per school who received each school advice (the final advice, after any reconsideration). In order the schooladviezen are:  
+*VSO*	special-needs secondary education
+*PRO*	practical education
+*VMBO_B*	VMBO, basic track
+*VMBO_B_K*	combined advice VMBO-B / VMBO-K
+*VMBO_K*	VMBO, “framework” track
+*VMBO_K_GT*	combined advice VMBO-K / VMBO-GT
+*VMBO_GT	VMBO*, mixed/theoretical track
+*VMBO_GT_HAVO*	combined advice VMBO-GT / HAVO
+*HAVO*	senior general secondary education
+*HAVO_VWO*	combined advice HAVO / VWO
+*VWO*	pre-university education
+*ADVIES_NIET_MOGELIJK*	no advice possible
+
+## Schoolweging  
+The csv file "schoolweging_2022-2025.ods" contains the *schoolweging* score for each school. This score represents how socio-economically disadvantaged the school’s student population is, based on e.g. the parents’ education level and income. Higher = more disadvantaged. Values run roughly from 20 to 40. Additionally, for each school the number of students is given and the *spread*, how much the students within the school differ from each other in disadvantage. 
+
+## Eindscores 
+the csv file "eindscores_2024-2025.csv" 
+
+## Referentieniveaus 
+the csv file "referentieniveaus_2024-2025.csv" 
+
+
+# Reading the Data 
+In assignment 1 code is given to merge the different data files. The dataset "school_data", created below, can readily be employed as it includes the following:  
+- the primary test provider for each school
+- the schoolweging weighted by the number of students on each school (NA's still included) 
+- The percentage of students reaching the target reference level (score), designed to make provider-independent
+
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE) # set default echo = TRUE for all code blocks
+rm(list = ls()) # Remove any existing objects in memory
+
+# packages - install these once in the Console, not here:
+library(tidyverse)
+library(cowplot)
+library(readODS)
+library(plotly)
+
+# downloads the data into data/raw/ if you don't already have it, then loads
+# eindscores, referentieniveaus, schooladviezen and schoolweging
+source("data/get-data.R")
+
+school_provider <- eindscores |>
+  select(INSTELLINGSCODE, matches("_(AANTAL|GEM)$")) |>
+  pivot_longer(
+    cols = matches("_(AANTAL|GEM)$"),
+    names_to = c("provider", ".value"),
+    names_pattern = "(.+)_(AANTAL|GEM)"
+  ) |>
+  # DUO writes "<5" for small counts -> NA
+  mutate(AANTAL = as.numeric(AANTAL)) |>
+  filter(!is.na(AANTAL), AANTAL > 0, !is.na(GEM), GEM > 0) |>
+  group_by(INSTELLINGSCODE, provider) |>
+  summarise(AANTAL = sum(AANTAL), .groups = "drop")
+
+# most schools only use one provider - take whichever tested the most students
+primary_provider <- school_provider |>
+  group_by(INSTELLINGSCODE) |>
+  slice_max(AANTAL, n = 1, with_ties = FALSE) |>
+  ungroup() |>
+  select(INSTELLINGSCODE, provider)
+
+school_weights <- schoolweging |>
+  mutate(INSTELLINGSCODE = str_remove(OVT, "\\|.*$")) |>
+  group_by(INSTELLINGSCODE) |>
+  summarise(
+    schoolweging = weighted.mean(schoolweging, w = aantal_leerlingen),
+    .groups = "drop"
+  )
+
+count_cols <- c(
+  "REKENEN_LAGER1F", "REKENEN_1F", "REKENEN_1S",
+  "LV_LAGER1F", "LV_1F", "LV_2F",
+  "TV_LAGER1F", "TV_1F", "TV_2F"
+)
+
+ref_levels <- referentieniveaus |>
+  mutate(across(all_of(count_cols), ~ suppressWarnings(as.numeric(.)))) |>
+  group_by(INSTELLINGSCODE) |>
+  summarise(
+    across(all_of(count_cols), ~ sum(.x, na.rm = TRUE)),
+    .groups = "drop"
+  ) |>
+  mutate(
+    rekenen_n = REKENEN_LAGER1F + REKENEN_1F + REKENEN_1S,
+    taal_lv_n = LV_LAGER1F + LV_1F + LV_2F,
+    taal_tv_n = TV_LAGER1F + TV_1F + TV_2F,
+    score = (
+      100 * REKENEN_1S / rekenen_n +
+        100 * LV_2F / taal_lv_n +
+        100 * TV_2F / taal_tv_n
+    ) / 3,
+    n_students = rekenen_n
+  ) |>
+  filter(rekenen_n > 0, taal_lv_n > 0, taal_tv_n > 0) |>
+  select(INSTELLINGSCODE, score, n_students)
+
+school_data <- ref_levels |>
+  inner_join(primary_provider, by = "INSTELLINGSCODE") |>
+  left_join(school_weights, by = "INSTELLINGSCODE")
+
+
+# standard color scheme for the different providers
+provider_colors <- c(
+  LIB = "#2a78d6", IEP = "#eb6834",
+  ROUTE8 = "#1baf7a", DIA = "#4a3aa7",
+  AMN = "#e87ba4", DOE = "#eda100"
+)
+```
+
+# Data Exploration 
+
+## Data Descriptives 
+```{r helper function}
+# function to convert character to value, default fill-value is 2.5 
+convert_count <- function(x, fill_value = 2.5) {
+  x <- as.character(x) # to ensure that the matching does not run into errors because of the type 
+  as.numeric(if_else(x == "<5", as.character(fill_value), x))
+  
+}
+```
+
+
+
+
+```{r data descriptives 1: advice counts}
+fill <- 3 
+
+descriptives <- schooladviezen |>
+  select(c(VSO:ADVIES_NIET_MOGELIJK)) |> # select only the advice counts 
+  mutate(across(everything(), function(x) convert_count(x, fill_value = fill))) |> # use the helper function convert_count to convert "<5" to a fill value 
+  summarise(across(everything(), sum))
+
+descriptives |>
+  pivot_longer(everything(), names_to = "advice", values_to = "n_students") |>
+  mutate(proportion = round((n_students / sum(n_students)), 2))
+  
+```
+
+
+## Boxplot: Exploring the Distribution of schoolweging by provider 
+The schoolweights have already been weighted by the number of students in the schools. The provider is the primary provider of a school if they employ multiple doorstroomtoetsen. 
+```{r}
+# store national average of schoolweging, only including schools with a score 
+nat_average <- school_data |>
+  filter(!is.na(schoolweging)) |>
+  summarise(average = mean(schoolweging)) |>
+  pull(average)
+
+
+# filter out schools without a schoolweging 
+p <- school_data |>
+  filter(!is.na(schoolweging)) |>
+    ggplot(aes(y = schoolweging,
+               x = provider,
+               colour = provider,
+               fill = provider)) + 
+    geom_boxplot(linewidth = 1, staplewidth = 0.5, alpha = 0.6, show.legend = FALSE) + # show boxplot of schoolweging per provider 
+    geom_hline(yintercept = nat_average,
+               linetype = "dashed",
+               colour = "black",
+               linewidth = 0.4) +
+    scale_fill_manual(values = provider_colors) +
+    scale_colour_manual(values = provider_colors) + 
+    labs(title = "Distribution of Schools' Schoolweging by Test Provider", 
+         x = "Test Provider",
+         y = "Schoolweging") + 
+    scale_y_continuous(limits = c(19, 41)) + 
+  theme_bw()
+  
+
+ggplotly(p)
+```
+
