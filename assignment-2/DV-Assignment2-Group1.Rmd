@@ -15,7 +15,7 @@ rm(list = ls())
 
 # installs (if missing) and loads every package this project uses - add any
 # new packages to scripts/00-packages.R, not here
-source("../scripts/00-packages.R")
+source("scripts/00-packages.R")
 
 # downloads the data into data/raw/ if you don't already have it, then loads
 # eindscores, referentieniveaus, schooladviezen and schoolweging into this
@@ -219,3 +219,381 @@ Looking at Figure 3, we observe that advice is moderately related to both: sligh
 School weighting is spread continuously across schools, roughly bell-shaped around 29–30, with enough schools at both ends to compare more and less disadvantaged populations (Figure 1). Schools with better test results clearly advise more students to HAVO or higher (r = 0.69; Figure 2), so on the whole, advice follows demonstrated performance. Looking at the two subjects separately, advice is related to maths (r = 0.55) and reading (r = 0.49) about equally, which supports using the average of both as our measure of test results (Figure 3).
 
 At the same time, figure 2 and 3 both show that schools with similar test results still differ considerably in how many students they advise to a higher track. The question for the next phase is whether schoolweging explains part of that difference. At the same test results, does a more disadvantaged school advise fewer of its students to a higher track?
+
+## Moderation analysis
+
+The exploratory analysis above supports using the average of maths 1S and reading 2F as the measure of school-level test performance. We now test whether `schoolweging` changes the relationship between test performance and HAVO-or-higher advice.
+
+For this analysis:
+
+- privacy-suppressed counts (`"<5"`) are replaced by **2.5**;
+- split-track advice (`HAVO_VWO`) contributes **0.5** to the HAVO-or-higher outcome;
+- `schoolweging` remains continuous in the model;
+- the 25th, 50th, and 75th percentiles of `schoolweging` are used only to visualize representative levels of disadvantage.
+
+### Prepare the analysis data
+
+```{r prepare-moderation-data}
+names(schooladviezen) <- gsub("\\u00a0", "", names(schooladviezen))
+
+advice_cols <- c(
+  "VSO", "PRO", "VMBO_B", "VMBO_B_K", "VMBO_K", "VMBO_K_GT",
+  "VMBO_GT", "VMBO_GT_HAVO", "HAVO", "HAVO_VWO", "VWO"
+)
+
+to_num <- function(x) {
+  if_else(x == "<5", 2.5, suppressWarnings(as.numeric(x)))
+}
+
+adv_ids <- schooladviezen[, 3:4]
+ref_ids <- referentieniveaus[, 2:3]
+
+advice_data <- schooladviezen |>
+  mutate(
+    inst = adv_ids[[1]],
+    vest = adv_ids[[2]],
+    across(all_of(advice_cols), to_num),
+    n_advice = rowSums(across(all_of(advice_cols)), na.rm = TRUE),
+    pct_havo_plus = 100 * (HAVO + 0.5 * HAVO_VWO + VWO) / n_advice
+  ) |>
+  filter(n_advice > 0) |>
+  select(inst, vest, pct_havo_plus)
+
+reference_data <- referentieniveaus |>
+  mutate(
+    inst = ref_ids[[1]],
+    vest = ref_ids[[2]],
+    tot_m = to_num(REKENEN_LAGER1F) + to_num(REKENEN_1F) +
+      to_num(REKENEN_1S) + to_num(REKENEN_2F),
+    tot_r = to_num(LV_LAGER1F) + to_num(LV_1F) + to_num(LV_2F),
+    pct_m = 100 * to_num(REKENEN_1S) / tot_m,
+    pct_r = 100 * to_num(LV_2F) / tot_r,
+    pct_test = (pct_m + pct_r) / 2
+  ) |>
+  select(inst, vest, pct_test)
+
+weighting_data <- schoolweging |>
+  transmute(
+    inst = sub("\\|.*$", "", OVT),
+    schoolweging
+  ) |>
+  filter(!is.na(schoolweging)) |>
+  distinct(inst, .keep_all = TRUE)
+
+model_data <- advice_data |>
+  inner_join(reference_data, by = c("inst", "vest")) |>
+  inner_join(weighting_data, by = "inst") |>
+  filter(!is.na(pct_test), !is.na(pct_havo_plus))
+
+nrow(model_data)
+```
+
+The analysis is performed at the **school level**. The outcome is the percentage receiving HAVO-or-higher advice, while test performance is based on standardized reference-level attainment rather than provider-specific raw scores.
+
+### Model school disadvantage as a moderator
+
+The interaction model tests whether the relationship between test performance and HAVO-or-higher advice changes with school disadvantage.
+
+```{r moderation-model}
+model_havo <- lm(
+  pct_havo_plus ~ pct_test * schoolweging,
+  data = model_data
+)
+
+model_results <- tibble(
+  r_squared = summary(model_havo)$r.squared,
+  interaction = coef(model_havo)[["pct_test:schoolweging"]]
+)
+
+model_results
+```
+
+The interaction is negative, meaning that the positive relationship between test performance and HAVO-or-higher advice becomes weaker as school disadvantage increases. In other words, the difference between lower- and higher-disadvantage schools becomes larger at higher levels of test performance.
+
+#### Representative predictions
+
+The model keeps `schoolweging` continuous. The three lines used in the visualization represent its 25th, 50th, and 75th percentiles.
+
+```{r moderation-predictions}
+sw_values <- quantile(
+  model_data$schoolweging,
+  probs = c(0.25, 0.50, 0.75),
+  na.rm = TRUE
+)
+
+prediction_data <- expand_grid(
+  pct_test = seq(
+    quantile(model_data$pct_test, 0.05, na.rm = TRUE),
+    quantile(model_data$pct_test, 0.95, na.rm = TRUE),
+    length.out = 100
+  ),
+  schoolweging = as.numeric(sw_values)
+) |>
+  mutate(
+    disadvantage = factor(
+      schoolweging,
+      levels = as.numeric(sw_values),
+      labels = c("Lower disadvantage", "Typical", "Higher disadvantage")
+    ),
+    fit = predict(model_havo, newdata = pick(pct_test, schoolweging))
+  )
+```
+
+To make the widening gap easier to interpret, we compare the lower- and higher-disadvantage predictions at several test-performance values.
+
+```{r moderation-gap-check}
+gap_check <- expand_grid(
+  pct_test = c(25, 40, 55, 70),
+  schoolweging = c(sw_values[[1]], sw_values[[3]])
+) |>
+  mutate(predicted = predict(model_havo, newdata = pick(everything()))) |>
+  arrange(pct_test, schoolweging) |>
+  group_by(pct_test) |>
+  summarise(
+    lower_disadvantage = first(predicted),
+    higher_disadvantage = last(predicted),
+    gap = higher_disadvantage - lower_disadvantage,
+    .groups = "drop"
+  )
+
+gap_check
+```
+
+The predicted difference is small at lower test-performance levels and widens as test performance rises. At 70% test performance, the predicted HAVO-or-higher advice gap between the 25th and 75th percentiles of school disadvantage is about **8 percentage points**.
+
+### Interactive visualization
+
+The interactive plot has two states:
+
+1. **Overall:** observed schools and the overall relationship between test performance and HAVO-or-higher advice.
+2. **Show school disadvantage:** schools are coloured by broad disadvantage group and the overall line is replaced by predictions at the 25th, 50th, and 75th percentiles of `schoolweging`.
+
+The broad groups used to colour the points are only a visual aid. The model itself continues to use continuous `schoolweging`.
+
+```{r interactive-data}
+model_data <- model_data |>
+  mutate(
+    disadvantage_group = case_when(
+      schoolweging <= sw_values[[1]] ~ "Lower disadvantage",
+      schoolweging >= sw_values[[3]] ~ "Higher disadvantage",
+      TRUE ~ "Typical"
+    ),
+    disadvantage_group = factor(
+      disadvantage_group,
+      levels = c("Lower disadvantage", "Typical", "Higher disadvantage")
+    )
+  )
+
+high_reference <- prediction_data |>
+  filter(disadvantage == "Higher disadvantage") |>
+  select(pct_test, high_fit = fit)
+
+prediction_interactive <- prediction_data |>
+  left_join(high_reference, by = "pct_test") |>
+  mutate(
+    difference_high = fit - high_fit,
+    hover_text = paste0(
+      "<b>", disadvantage, "</b>",
+      "<br>Test performance: ", round(pct_test, 1), "%",
+      "<br>Predicted HAVO+ advice: ", round(fit, 1), "%",
+      "<br>Difference from higher-disadvantage school: ",
+      if_else(
+        abs(difference_high) < 1e-8,
+        "reference",
+        paste0(
+          if_else(difference_high > 0, "+", ""),
+          round(difference_high, 1),
+          " percentage points"
+        )
+      )
+    )
+  )
+
+overall_model <- lm(pct_havo_plus ~ pct_test, data = model_data)
+
+overall_data <- tibble(
+  pct_test = seq(
+    quantile(model_data$pct_test, 0.05, na.rm = TRUE),
+    quantile(model_data$pct_test, 0.95, na.rm = TRUE),
+    length.out = 100
+  )
+) |>
+  mutate(fit = predict(overall_model, newdata = pick(everything())))
+```
+
+```{r interactive-plot}
+group_colours <- c(
+  "Lower disadvantage" = "#2C7BB6",
+  "Typical" = "#7F7F7F",
+  "Higher disadvantage" = "#D7191C"
+)
+
+interactive_plot <- plot_ly()
+
+# Default state: neutral school dots.
+interactive_plot <- interactive_plot |>
+  add_markers(
+    data = model_data,
+    x = ~pct_test,
+    y = ~pct_havo_plus,
+    marker = list(color = "grey55", size = 5, opacity = 0.35),
+    hoverinfo = "skip",
+    showlegend = FALSE
+  )
+
+# Disadvantage-coloured dots, hidden initially.
+for (group in levels(model_data$disadvantage_group)) {
+  group_data <- model_data |>
+    filter(disadvantage_group == group)
+
+  interactive_plot <- interactive_plot |>
+    add_markers(
+      data = group_data,
+      x = ~pct_test,
+      y = ~pct_havo_plus,
+      name = group,
+      marker = list(
+        color = group_colours[[group]],
+        size = 5,
+        opacity = 0.15
+      ),
+      hoverinfo = "skip",
+      visible = FALSE,
+      showlegend = FALSE,
+      legendgroup = group
+    )
+}
+
+# Overall relationship, visible initially.
+interactive_plot <- interactive_plot |>
+  add_lines(
+    data = overall_data,
+    x = ~pct_test,
+    y = ~fit,
+    line = list(width = 3),
+    hovertemplate = paste(
+      "Test performance: %{x:.1f}%",
+      "<br>Predicted HAVO+ advice: %{y:.1f}%",
+      "<extra></extra>"
+    ),
+    showlegend = FALSE
+  )
+
+# Disadvantage-specific prediction lines, hidden initially.
+for (group in levels(prediction_interactive$disadvantage)) {
+  line_data <- prediction_interactive |>
+    filter(disadvantage == group)
+
+  interactive_plot <- interactive_plot |>
+    add_lines(
+      data = line_data,
+      x = ~pct_test,
+      y = ~fit,
+      name = group,
+      text = ~hover_text,
+      hoverinfo = "text",
+      line = list(color = group_colours[[group]], width = 4),
+      visible = FALSE,
+      showlegend = TRUE,
+      legendgroup = group
+    )
+}
+
+interactive_plot <- interactive_plot |>
+  layout(
+    margin = list(l = 75, r = 25, t = 160, b = 70),
+    annotations = list(
+      list(
+        x = 0,
+        y = 1.20,
+        xref = "paper",
+        yref = "paper",
+        text = "<b>The advice gap widens as test performance rises</b>",
+        showarrow = FALSE,
+        xanchor = "left",
+        align = "left",
+        font = list(size = 18)
+      ),
+      list(
+        x = 0,
+        y = 1.155,
+        xref = "paper",
+        yref = "paper",
+        text = paste0(
+          "Compare the overall relationship with predictions at different ",
+          "levels of school disadvantage."
+        ),
+        showarrow = FALSE,
+        xanchor = "left",
+        align = "left",
+        font = list(size = 12)
+      )
+    ),
+    xaxis = list(
+      title = "% reaching the target test level",
+      range = c(20, 85),
+      automargin = TRUE
+    ),
+    yaxis = list(
+      title = "% advised HAVO or higher",
+      range = c(0, 70),
+      automargin = TRUE
+    ),
+    legend = list(
+      orientation = "h",
+      x = 0.5,
+      y = 0.14,
+      xanchor = "center",
+      yanchor = "middle"
+    ),
+    updatemenus = list(
+      list(
+        type = "buttons",
+        direction = "right",
+        x = 0,
+        y = 1.03,
+        xanchor = "left",
+        yanchor = "bottom",
+        showactive = TRUE,
+        buttons = list(
+          list(
+            label = "Overall",
+            method = "update",
+            args = list(
+              list(
+                visible = c(
+                  TRUE,
+                  FALSE, FALSE, FALSE,
+                  TRUE,
+                  FALSE, FALSE, FALSE
+                )
+              ),
+              list(showlegend = FALSE)
+            )
+          ),
+          list(
+            label = "Show school disadvantage",
+            method = "update",
+            args = list(
+              list(
+                visible = c(
+                  FALSE,
+                  TRUE, TRUE, TRUE,
+                  FALSE,
+                  TRUE, TRUE, TRUE
+                )
+              ),
+              list(showlegend = TRUE)
+            )
+          )
+        )
+      )
+    )
+  )
+
+interactive_plot
+```
+
+### Current conclusion
+
+Schools with similar test performance do not have the same predicted HAVO-or-higher advice across levels of school disadvantage. The difference is relatively small at lower test-performance levels and becomes larger as test performance rises. The interactive visualization is the current working version of the final plot; further interpretation, context, and narrative framing can be added later without changing the analysis above.
