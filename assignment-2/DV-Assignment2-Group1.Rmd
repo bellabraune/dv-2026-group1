@@ -36,19 +36,21 @@ Instruction: At the end of primary school, every student receives a school advic
 Relate a measure of the school’s advice (e.g. pct_havo_plus) to a measure of its test results (pct_maths_1s and/or pct_reading_2f), and test whether schoolweging moderates this relationship. Do two schools with the same results give the same advice, regardless of who their students are?
 
 ### What are we investigating, why does it matter?
+
 Every primary-school pupil receives a secondary-track advice at the end of group 8 (PRO, VMBO, HAVO, or VWO) that sets their entire secondary trajectory. This advice is based on the teacher's judgement and on the doorstroomtoets, a standardized test designed to be comparable across schools. We ask whether, holding test performance constant, a school's advice still depends on how socio-economically disadvantaged its student body is (`schoolweging`). Concretely, we relate each school's share of students advised to HAVO/VWO to its share reaching the reference level in maths and/or reading, and test whether `schoolweging` shifts that relationship. It matters because if disadvantaged schools systematically assign lower tracks to students with the same demonstrated performance, then a standardized test is failing its purpose and students are being pushed down the track on the basis of context rather than ability, a live fairness concern in the Dutch debate over transfer advice.
 
 ### Who is the target Audience, how does that shape the choices?
+
 Our primary audience is **policymakers and the general public** (a newspaper-graphic reader), with school boards as a secondary audience. Since this reader is not a statistician, the visualization must carry *one* legible conclusion (advice tracks test results, and disadvantage shifts it by this much) expressed in concrete, relatable units (e.g. percentage points of students advised upward) rather than coefficients or p-values. That pushes us toward a small number of clear encodings (a fit for advantaged vs. disadvantaged schools, or a gap/residual line) and toward a single highlighted pattern, rather than a dense multivariate plot.
 
-
 #### To Discuss:
-We need to check how we want to summarise the variables. Two candidates: (1) `pct_havo_plus` — the share of students advised to HAVO or VWO, a single binary-style metric that is easy for a general audience to read; or (2) a numeric track scale (PRO = 1, VMBO = 2, HAVO = 3, VWO = 6) averaged per school, which uses the full range of the advice and does not collapse the lower tracks (PRO, SBO, VMBO) into one bucket. The choice matters: the binary is simpler to communicate, while the numeric
-scale is more faithful to how much of a gap a track move represents. We can pick between them once the exploratory plots make clear which measure carries the pattern we want to show.
+
+We need to check how we want to summarise the variables. Two candidates: (1) `pct_havo_plus` — the share of students advised to HAVO or VWO, a single binary-style metric that is easy for a general audience to read; or (2) a numeric track scale (PRO = 1, VMBO = 2, HAVO = 3, VWO = 6) averaged per school, which uses the full range of the advice and does not collapse the lower tracks (PRO, SBO, VMBO) into one bucket. The choice matters: the binary is simpler to communicate, while the numeric scale is more faithful to how much of a gap a track move represents. We can pick between them once the exploratory plots make clear which measure carries the pattern we want to show.
 
 ## Exploratory process
 
 #### Figure 1: Distribution of school weighting across schools
+
 ```{r exploratory-plot-1, fig.height = 4, fig.width = 6, fig.align = "center"}
 # Drop the 119 empty locations (0 students, no schoolweging)
 sw <- schoolweging |>
@@ -78,9 +80,10 @@ sw |>
   theme(panel.grid.minor = element_blank())
 ```
 
-The distribution of `schoolweging` is roughly bell-shaped, centred around 29–30, with the bulk of schools falling between 22 and 37. There is no natural bimodal split — the spread is continuous. For the moderation analysis we'll need to pick a threshold (e.g. median split at ~29.5, or tertiles) to define "low" vs "high" disadvantage groups; the plot makes clear that no single school is an outlier, and that both tails have enough mass to compare.
+The distribution of `schoolweging` is roughly bell-shaped, centred around 29–30, with the bulk of schools falling between 22 and 37. There is no natural bimodal split — the spread is continuous. For the moderation analysis we'll need to pick a threshold (e.g. median split at \~29.5, or tertiles) to define "low" vs "high" disadvantage groups; the plot makes clear that no single school is an outlier, and that both tails have enough mass to compare.
 
 #### Figure 2: Share of students advised HAVO or higher, by share reaching the reference level
+
 ```{r exploratory-plot-2, fig.height = 4.5, fig.width = 6.5, fig.align = "center"}
 # the count columns are character ("<5" privacy suppression) -> numeric first
 adv_cols <- c("PRO", "VMBO_B", "VMBO_B_K", "VMBO_K", "VMBO_K_GT", "VMBO_GT",
@@ -136,13 +139,14 @@ plot_data |>
   theme_minimal()
 ```
 
-Figure 2 shows that across the 5,921 schools, the relationship between test result and advice is clearly positive (correlation 0.69): schools whose students reach the reference level in maths and reading advise a larger share of them to HAVO or VWO. On the whole, advice tracks demonstrated performance. 
+Figure 2 shows that across the 5,921 schools, the relationship between test result and advice is clearly positive (correlation 0.69): schools whose students reach the reference level in maths and reading advise a larger share of them to HAVO or VWO. On the whole, advice tracks demonstrated performance.
 
-However, our test measure averages two different subjects. Maths and reading measure different skills, and their target levels can differ in difficulty. Averaging them assumes that advice responds to both subjects in the same way. 
+However, our test measure averages two different subjects. Maths and reading measure different skills, and their target levels can differ in difficulty. Averaging them assumes that advice responds to both subjects in the same way.
 
 If advice actually depends more on one subject than the other, averaging them weakens this claim. This would in turn make it unclear what "schools with the same results" means, and that comparison is the core of our research question. We therefore looked at the two subjects separately in figure 3, relating each school's share of VWO advice, the highest track, to its share of students reaching the maths target (1S) and the reading target (2F).
 
-#### Figure 3: 
+#### Figure 3:
+
 ```{r exploratory-plot-3, fig.height = 4.5, fig.width = 6.5, fig.align = "center"}
 
 # share of students reaching the target level, per subject separately
@@ -210,10 +214,8 @@ subject_data |>
 
 Looking at Figure 3, we observe that advice is moderately related to both: slightly more strongly to maths (r = 0.55) than to reading (r = 0.49). Since the difference is small, advice does not appear to depend mainly on one subject. This supports using the average of both subjects as our measure of test results. Because the data is at school level, this describes how schools' advice relates to their overall results, not how individual students are advised.
 
-
-
 ## Conclusion
-School weighting is spread continuously across schools, roughly bell-shaped around 29–30, with enough schools at both ends to compare more and less disadvantaged populations (Figure 1). Schools with better test results clearly advise more students to HAVO or higher (r = 0.69; Figure 2), so on the whole, advice follows demonstrated performance. Looking at the two subjects separately, advice is related to maths (r = 0.55) and reading (r = 0.49) about equally, which supports using the average of both as our measure of test results (Figure 3).
 
+School weighting is spread continuously across schools, roughly bell-shaped around 29–30, with enough schools at both ends to compare more and less disadvantaged populations (Figure 1). Schools with better test results clearly advise more students to HAVO or higher (r = 0.69; Figure 2), so on the whole, advice follows demonstrated performance. Looking at the two subjects separately, advice is related to maths (r = 0.55) and reading (r = 0.49) about equally, which supports using the average of both as our measure of test results (Figure 3).
 
 At the same time, figure 2 and 3 both show that schools with similar test results still differ considerably in how many students they advise to a higher track. The question for the next phase is whether schoolweging explains part of that difference. At the same test results, does a more disadvantaged school advise fewer of its students to a higher track?

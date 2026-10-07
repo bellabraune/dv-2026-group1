@@ -1,0 +1,643 @@
+---
+title: "Advice Outcome Analysis"
+author: "Group 1"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+rm(list = ls())
+
+source(here("scripts", "00-packages.R"))
+
+source(here("scripts", "01-get-data.R"))
+```
+
+## Purpose
+
+This notebook keeps the main analytical decisions for RQ3 in one place:
+
+> **Do schools with similar test results give similar secondary-school advice?**
+
+The final visualization should show whether school disadvantage (`schoolweging`)
+changes the relationship between school-level test performance and secondary
+school advice.
+
+This file is deliberately exploratory and compact. It records:
+
+1. why **HAVO+** was selected as the main advice outcome;
+2. why **K+** is used as a robustness threshold;
+3. the first moderation results for both outcomes;
+4. what those results imply for the final visualization.
+
+## 1. Advice outcomes
+
+### Data preparation
+
+The advice data contain privacy-suppressed counts written as `"<5"`. For the
+current analysis these cells are replaced by **2.5**, the midpoint of 1--4.
+Genuine missing values remain `NA`.
+
+Split-track advice such as `HAVO_VWO` is assigned **0.5 to either side of a
+threshold**. This is an analytical midpoint convention, not a rule specified by
+the source data.
+
+```{r advice-prep}
+names(schooladviezen) <- gsub("\\u00a0", "", names(schooladviezen))
+
+advice_cols <- c(
+  "VSO", "PRO", "VMBO_B", "VMBO_B_K", "VMBO_K", "VMBO_K_GT",
+  "VMBO_GT", "VMBO_GT_HAVO", "HAVO", "HAVO_VWO", "VWO"
+)
+
+advice <- schooladviezen |>
+  mutate(
+    across(
+      all_of(advice_cols),
+      ~ if_else(.x == "<5", 2.5, as.numeric(.x))
+    )
+  ) |>
+  mutate(n_advice = rowSums(across(all_of(advice_cols)), na.rm = TRUE)) |>
+  filter(n_advice > 0) |>
+  mutate(
+    pct_vwo = 100 * VWO / n_advice,
+    pct_havo_plus = 100 * (HAVO + 0.5 * HAVO_VWO + VWO) / n_advice,
+    pct_gt_plus = 100 * (
+      0.5 * VMBO_GT_HAVO + VMBO_GT + HAVO + 0.5 * HAVO_VWO + VWO
+    ) / n_advice,
+    pct_k_plus = 100 * (
+      0.5 * VMBO_B_K + VMBO_K + 0.5 * VMBO_K_GT + VMBO_GT +
+        0.5 * VMBO_GT_HAVO + HAVO + 0.5 * HAVO_VWO + VWO
+    ) / n_advice,
+    pct_vmbo = 100 * (
+      VMBO_B + VMBO_B_K + VMBO_K + VMBO_K_GT + VMBO_GT +
+        0.5 * VMBO_GT_HAVO
+    ) / n_advice,
+    pct_pro_vso = 100 * (PRO + VSO) / n_advice
+  )
+```
+
+### Suppression burden
+
+The useful question is not simply whether a school contains a suppressed cell,
+because almost all schools do. Instead, we compare how much of each reconstructed
+outcome comes from cells imputed as 2.5.
+
+```{r suppression}
+raw_advice <- schooladviezen
+names(raw_advice) <- gsub("\\u00a0", "", names(raw_advice))
+
+suppression_data <- raw_advice |>
+  mutate(
+    across(
+      all_of(advice_cols),
+      ~ if_else(.x == "<5", 2.5, 0),
+      .names = "sup_{.col}"
+    ),
+    across(
+      all_of(advice_cols),
+      ~ if_else(.x == "<5", 2.5, as.numeric(.x))
+    )
+  ) |>
+  mutate(n_advice = rowSums(across(all_of(advice_cols)), na.rm = TRUE)) |>
+  filter(n_advice > 0) |>
+  mutate(
+    sup_vwo = sup_VWO,
+    sup_havo_plus = sup_HAVO + 0.5 * sup_HAVO_VWO + sup_VWO,
+    sup_gt_plus = 0.5 * sup_VMBO_GT_HAVO + sup_VMBO_GT + sup_HAVO +
+      0.5 * sup_HAVO_VWO + sup_VWO,
+    sup_k_plus = 0.5 * sup_VMBO_B_K + sup_VMBO_K + 0.5 * sup_VMBO_K_GT +
+      sup_VMBO_GT + 0.5 * sup_VMBO_GT_HAVO + sup_HAVO +
+      0.5 * sup_HAVO_VWO + sup_VWO,
+    sup_vmbo = sup_VMBO_B + sup_VMBO_B_K + sup_VMBO_K + sup_VMBO_K_GT +
+      sup_VMBO_GT + 0.5 * sup_VMBO_GT_HAVO,
+    sup_pro_vso = sup_PRO + sup_VSO,
+    n_vwo = VWO,
+    n_havo_plus = HAVO + 0.5 * HAVO_VWO + VWO,
+    n_gt_plus = 0.5 * VMBO_GT_HAVO + VMBO_GT + HAVO +
+      0.5 * HAVO_VWO + VWO,
+    n_k_plus = 0.5 * VMBO_B_K + VMBO_K + 0.5 * VMBO_K_GT + VMBO_GT +
+      0.5 * VMBO_GT_HAVO + HAVO + 0.5 * HAVO_VWO + VWO,
+    n_vmbo = VMBO_B + VMBO_B_K + VMBO_K + VMBO_K_GT + VMBO_GT +
+      0.5 * VMBO_GT_HAVO,
+    n_pro_vso = PRO + VSO
+  )
+
+suppression_summary <- tibble(
+  outcome = c("VWO", "HAVO+", "GT+", "K+", "VMBO", "PRO + VSO"),
+  imputed_count = c(
+    sum(suppression_data$sup_vwo, na.rm = TRUE),
+    sum(suppression_data$sup_havo_plus, na.rm = TRUE),
+    sum(suppression_data$sup_gt_plus, na.rm = TRUE),
+    sum(suppression_data$sup_k_plus, na.rm = TRUE),
+    sum(suppression_data$sup_vmbo, na.rm = TRUE),
+    sum(suppression_data$sup_pro_vso, na.rm = TRUE)
+  ),
+  reconstructed_count = c(
+    sum(suppression_data$n_vwo, na.rm = TRUE),
+    sum(suppression_data$n_havo_plus, na.rm = TRUE),
+    sum(suppression_data$n_gt_plus, na.rm = TRUE),
+    sum(suppression_data$n_k_plus, na.rm = TRUE),
+    sum(suppression_data$n_vmbo, na.rm = TRUE),
+    sum(suppression_data$n_pro_vso, na.rm = TRUE)
+  )
+) |>
+  mutate(imputed_share = 100 * imputed_count / reconstructed_count)
+
+suppression_summary
+```
+
+The reproduced results are:
+
+| Outcome | Imputed contribution |
+|---|---:|
+| VWO | 19.6% |
+| HAVO+ | 26.9% |
+| GT+ | 30.3% |
+| K+ | 37.2% |
+| VMBO | 53.4% |
+| PRO + VSO | 53.9% |
+
+**Interpretation:** HAVO+ is less dependent on imputed suppressed cells than the
+broader lower-track measures. K+ has more imputation than HAVO+, but remains
+usable as a robustness threshold.
+
+### How similar are the outcomes?
+
+```{r outcome-correlations}
+outcome_cols <- c(
+  "pct_vwo", "pct_havo_plus", "pct_gt_plus", "pct_k_plus",
+  "pct_vmbo", "pct_pro_vso"
+)
+
+cor_with_havo <- advice |>
+  summarise(
+    across(
+      all_of(outcome_cols),
+      ~ cor(.x, pct_havo_plus, use = "complete.obs")
+    )
+  )
+
+cor_with_havo
+```
+
+The reproduced correlations with HAVO+ are:
+
+| Outcome | Correlation with HAVO+ |
+|---|---:|
+| VWO | 0.831 |
+| HAVO+ | 1.000 |
+| GT+ | 0.855 |
+| K+ | 0.715 |
+| VMBO | -0.777 |
+| PRO + VSO | -0.472 |
+
+**Interpretation:**
+
+- **HAVO+** is the preferred main outcome: it is easy to interpret and has a
+  relatively lower suppression burden.
+- **VWO** and **GT+** are highly redundant with HAVO+.
+- **All VMBO** mainly restates the HAVO+/VMBO divide from the opposite direction.
+- **K+** is the most useful robustness threshold because it moves the cutoff
+  substantially lower in the ordered track hierarchy.
+- **PRO and VSO** are substantively different pathways and are not used as the
+  main robustness outcome.
+
+### Outcome decision
+
+The next analysis therefore uses:
+
+- **Primary outcome:** HAVO or higher (`pct_havo_plus`)
+- **Robustness outcome:** VMBO-K or higher (`pct_k_plus`)
+
+The K+ analysis tests whether the disadvantage pattern is broad across the
+advice hierarchy or concentrated around the HAVO/VMBO boundary.
+
+## 2. Test-performance measure
+
+The current assignment analysis defines test performance as the average of:
+
+- the percentage reaching **maths 1S**, and
+- the percentage reaching **reading 2F**.
+
+Maths and reading showed similar relationships with advice in the exploratory
+analysis, supporting their use as a combined school-level test measure.
+
+```{r test-performance}
+to_num <- function(x) {
+  if_else(x == "<5", 2.5, as.numeric(x))
+}
+
+ref <- referentieniveaus |>
+  mutate(
+    tot_m = to_num(REKENEN_LAGER1F) + to_num(REKENEN_1F) +
+      to_num(REKENEN_1S) + to_num(REKENEN_2F),
+    tot_r = to_num(LV_LAGER1F) + to_num(LV_1F) + to_num(LV_2F),
+    pct_m = 100 * to_num(REKENEN_1S) / tot_m,
+    pct_r = 100 * to_num(LV_2F) / tot_r,
+    pct_test = (pct_m + pct_r) / 2
+  )
+```
+
+**Interpretation:** the test measure is provider-independent because it uses
+standardized reference-level attainment rather than raw provider scores.
+
+## 3. First moderation results
+
+The first moderation analysis compared:
+
+```r
+advice ~ test_performance * schoolweging
+```
+
+for HAVO+ and K+. `schoolweging` was kept continuous.
+
+The results below record the output from Session 2. The next refinement step
+centers the predictors and converts these results into more interpretable
+predicted values; centering does not change the fitted relationship.
+
+### HAVO+
+
+- Correlation with test performance: **0.65**
+- Correlation with `schoolweging`: **-0.60**
+- Full interaction model: **R² = 0.53**
+- Interaction: **-0.033**
+
+The predicted p90-minus-p10 `schoolweging` gap was:
+
+| Test performance | Higher- minus lower-disadvantage gap |
+|---:|---:|
+| 25 | -3.5 pp |
+| 40 | -8.3 pp |
+| 55 | -13.1 pp |
+| 70 | -18.0 pp |
+
+The estimated test-performance slope was approximately:
+
+- **0.63** at lower disadvantage
+- **0.31** at higher disadvantage
+
+**Interpretation:** the HAVO+ disadvantage gap is not constant. It becomes much
+larger as school-level test performance increases. Among lower-performing
+schools the predicted difference is modest, while among higher-performing
+schools the predicted difference in HAVO/VWO advice is substantially larger.
+
+This means the central HAVO+ result is mainly an **interaction / slope
+difference**, rather than a simple constant downward shift.
+
+### K+
+
+- Correlation with test performance: **0.35**
+- Correlation with `schoolweging`: **-0.37**
+- Full interaction model: **R² = 0.17**
+- Interaction: **+0.006**, which is small
+
+The predicted p90-minus-p10 `schoolweging` gap was:
+
+| Test performance | Higher- minus lower-disadvantage gap |
+|---:|---:|
+| 25 | -8.7 pp |
+| 40 | -7.8 pp |
+| 55 | -7.0 pp |
+| 70 | -6.1 pp |
+
+**Interpretation:** K+ shows a disadvantage difference, but it is approximately
+constant across test performance. Unlike HAVO+, the K+ result is mainly a
+**level shift**, not a slope difference.
+
+## 4. What the two outcomes tell us
+
+The two outcomes do **not** show exactly the same pattern.
+
+- For **HAVO+**, the disadvantage gap grows strongly as test performance rises.
+- For **K+**, the gap is much flatter across the test-performance range.
+
+This suggests that disadvantage is associated with lower advice more broadly,
+but the especially strong widening gap at higher performance is concentrated
+around reaching the **HAVO/VWO** part of the hierarchy.
+
+This strengthens HAVO+ as the main outcome for the final visualization rather
+than weakening it: HAVO+ captures the part of the advice distribution where the
+relationship with disadvantage changes most clearly with performance.
+
+## 5. Implication for the final visualization
+
+The first moderation result favors a **predicted-lines visualization** over a
+single residual-gap plot.
+
+The likely main plot is:
+
+- **x-axis:** school-level test performance
+- **y-axis:** percentage advised HAVO or higher
+- predicted lines for representative values of continuous `schoolweging`
+
+The key visual message should be the **divergence of the predicted lines at
+higher test performance**, rather than the interaction coefficient itself.
+
+The final display should use representative disadvantage levels such as the
+25th, 50th, and 75th percentiles rather than categorizing `schoolweging` in the
+statistical model.
+
+## 6. Simple checks for the first visualization draft
+
+At this stage, centering the predictors is not necessary. Centering changes the
+interpretation of the regression coefficients, but it does **not** change the
+fitted relationship or the predicted lines. For the first visualization draft,
+the useful quantities are therefore the model predictions at representative
+levels of `schoolweging`.
+
+### Build one modelling dataset
+
+```{r model-data}
+adv_raw <- schooladviezen
+names(adv_raw) <- gsub("\\u00a0", "", names(adv_raw))
+
+adv_ids <- adv_raw[, 3:4]
+ref_ids <- referentieniveaus[, 2:3]
+
+adv_model <- adv_raw |>
+  mutate(
+    inst = adv_ids[[1]],
+    vest = adv_ids[[2]],
+    across(
+      all_of(advice_cols),
+      ~ if_else(.x == "<5", 2.5, as.numeric(.x))
+    )
+  ) |>
+  mutate(
+    n_advice = rowSums(across(all_of(advice_cols)), na.rm = TRUE),
+    pct_havo_plus = 100 * (HAVO + 0.5 * HAVO_VWO + VWO) / n_advice
+  ) |>
+  filter(n_advice > 0) |>
+  select(inst, vest, pct_havo_plus)
+
+ref_model <- referentieniveaus |>
+  mutate(
+    inst = ref_ids[[1]],
+    vest = ref_ids[[2]],
+    tot_m = to_num(REKENEN_LAGER1F) + to_num(REKENEN_1F) +
+      to_num(REKENEN_1S) + to_num(REKENEN_2F),
+    tot_r = to_num(LV_LAGER1F) + to_num(LV_1F) + to_num(LV_2F),
+    pct_m = 100 * to_num(REKENEN_1S) / tot_m,
+    pct_r = 100 * to_num(LV_2F) / tot_r,
+    pct_test = (pct_m + pct_r) / 2
+  ) |>
+  select(inst, vest, pct_test)
+
+sw_model <- schoolweging |>
+  transmute(
+    inst = sub("\\|.*$", "", OVT),
+    schoolweging
+  ) |>
+  filter(!is.na(schoolweging)) |>
+  distinct(inst, .keep_all = TRUE)
+
+model_data <- adv_model |>
+  inner_join(ref_model, by = c("inst", "vest")) |>
+  inner_join(sw_model, by = "inst") |>
+  filter(!is.na(pct_test), !is.na(pct_havo_plus))
+
+nrow(model_data)
+```
+
+### Predicted HAVO+ lines at representative disadvantage levels
+
+The statistical model keeps `schoolweging` continuous. The 25th, 50th, and
+75th percentiles are used only to display representative predicted lines.
+
+```{r havo-predictions}
+model_havo <- lm(
+  pct_havo_plus ~ pct_test * schoolweging,
+  data = model_data
+)
+
+sw_values <- quantile(
+  model_data$schoolweging,
+  probs = c(0.25, 0.50, 0.75),
+  na.rm = TRUE
+)
+
+sw_values
+
+prediction_data <- expand_grid(
+  pct_test = seq(
+    quantile(model_data$pct_test, 0.05, na.rm = TRUE),
+    quantile(model_data$pct_test, 0.95, na.rm = TRUE),
+    length.out = 100
+  ),
+  schoolweging = as.numeric(sw_values)
+) |>
+  mutate(
+    disadvantage = factor(
+      schoolweging,
+      levels = as.numeric(sw_values),
+      labels = c("Lower disadvantage", "Typical", "Higher disadvantage")
+    )
+  )
+
+prediction_data <- bind_cols(
+  prediction_data,
+  as.data.frame(
+    predict(model_havo, newdata = prediction_data, interval = "confidence")
+  )
+)
+
+summary(model_havo)$r.squared
+coef(model_havo)
+```
+
+For the final visualization, the important result is not the raw regression
+coefficient but how far apart the predicted lines are at the same test result.
+
+```{r predicted-gaps}
+gap_data <- expand_grid(
+  pct_test = c(25, 40, 55, 70),
+  schoolweging = c(sw_values[[1]], sw_values[[3]])
+) |>
+  mutate(
+    predicted = predict(model_havo, newdata = pick(everything()))
+  ) |>
+  arrange(pct_test, schoolweging) |>
+  group_by(pct_test) |>
+  summarise(
+    low_disadvantage = first(predicted),
+    high_disadvantage = last(predicted),
+    gap = high_disadvantage - low_disadvantage,
+    .groups = "drop"
+  )
+
+gap_data
+```
+
+**Interpretation:** if the gap becomes increasingly negative as test performance
+rises, the first visualization should emphasize the divergence between the
+lower- and higher-disadvantage predicted lines.
+
+### Quick sensitivity check
+
+The goal here is not to create a second full analysis. We only check whether the
+main interaction changes materially under plausible coding choices.
+
+The function below refits the same HAVO+ model while changing:
+
+- the replacement for `"<5"`; and
+- the share of `HAVO_VWO` counted above the HAVO threshold.
+
+It returns the interaction coefficient plus the predicted p75-minus-p25
+disadvantage gap at test-performance values 40 and 70.
+
+```{r sensitivity-function}
+run_check <- function(suppressed = 2.5, split = 0.5) {
+  num <- function(x) {
+    if_else(x == "<5", suppressed, as.numeric(x))
+  }
+
+  adv_check <- adv_raw |>
+    mutate(
+      inst = adv_ids[[1]],
+      vest = adv_ids[[2]],
+      across(all_of(advice_cols), num)
+    ) |>
+    mutate(
+      n_advice = rowSums(across(all_of(advice_cols)), na.rm = TRUE),
+      pct_havo_plus = 100 * (HAVO + split * HAVO_VWO + VWO) / n_advice
+    ) |>
+    filter(n_advice > 0) |>
+    select(inst, vest, pct_havo_plus)
+
+  ref_check <- referentieniveaus |>
+    mutate(
+      inst = ref_ids[[1]],
+      vest = ref_ids[[2]],
+      tot_m = num(REKENEN_LAGER1F) + num(REKENEN_1F) +
+        num(REKENEN_1S) + num(REKENEN_2F),
+      tot_r = num(LV_LAGER1F) + num(LV_1F) + num(LV_2F),
+      pct_m = 100 * num(REKENEN_1S) / tot_m,
+      pct_r = 100 * num(LV_2F) / tot_r,
+      pct_test = (pct_m + pct_r) / 2
+    ) |>
+    select(inst, vest, pct_test)
+
+  dat <- adv_check |>
+    inner_join(ref_check, by = c("inst", "vest")) |>
+    inner_join(sw_model, by = c("inst", "vest")) |>
+    filter(!is.na(pct_test), !is.na(pct_havo_plus))
+
+  fit <- lm(pct_havo_plus ~ pct_test * schoolweging, data = dat)
+  sw <- quantile(dat$schoolweging, c(0.25, 0.75), na.rm = TRUE)
+
+  pred <- expand_grid(
+    pct_test = c(40, 70),
+    schoolweging = as.numeric(sw)
+  ) |>
+    mutate(predicted = predict(fit, newdata = pick(everything()))) |>
+    select(pct_test, schoolweging, predicted) |>
+    pivot_wider(names_from = schoolweging, values_from = predicted)
+
+  tibble(
+    suppressed = suppressed,
+    split = split,
+    interaction = coef(fit)[["pct_test:schoolweging"]],
+    gap_test_40 = pred[[3]][pred$pct_test == 40] -
+      pred[[2]][pred$pct_test == 40],
+    gap_test_70 = pred[[3]][pred$pct_test == 70] -
+      pred[[2]][pred$pct_test == 70]
+  )
+}
+```
+
+First vary only the privacy-suppression assumption:
+
+```{r sensitivity-suppression}
+suppression_check <- bind_rows(
+  run_check(suppressed = 1, split = 0.5),
+  run_check(suppressed = 2.5, split = 0.5),
+  run_check(suppressed = 4, split = 0.5)
+)
+
+suppression_check
+```
+
+Then vary only the treatment of `HAVO_VWO`:
+
+```{r sensitivity-split}
+split_check <- bind_rows(
+  run_check(suppressed = 2.5, split = 0),
+  run_check(suppressed = 2.5, split = 0.5),
+  run_check(suppressed = 2.5, split = 1)
+)
+
+split_check
+```
+
+**Interpretation rule:** the main conclusion is robust enough for Draft 1 if:
+
+- the interaction remains negative in all scenarios; and
+- the disadvantage gap at test performance 70 remains clearly larger than the
+  gap at test performance 40.
+
+Exact coefficients do not need to be identical.
+
+## 7. Ready for Draft 1
+
+If the representative predictions reproduce the widening HAVO+ gap and the two
+quick sensitivity checks preserve that pattern, the analysis is sufficiently
+stable to begin the first final-visualization draft.
+
+The first draft can then use:
+
+- **x-axis:** school-level test performance;
+- **y-axis:** percentage advised HAVO or higher;
+- **three predicted lines:** p25, p50, and p75 `schoolweging`;
+- a direct annotation at the higher-performance end showing the predicted
+  percentage-point difference between lower- and higher-disadvantage schools.
+
+The provider analysis can follow **after Draft 1**. Its purpose will be to test
+whether provider materially changes the pattern and therefore whether the draft
+needs an additional provider layer or qualification.
+```{r first visualization draft}
+# First draft of the main visualization
+fig_draft <- prediction_data |>
+  ggplot(aes(x = pct_test, y = fit, colour = disadvantage)) +
+  geom_point(
+    data = model_data,
+    aes(x = pct_test, y = pct_havo_plus),
+    inherit.aes = FALSE,
+    alpha = 0.08,
+    size = 0.8,
+    colour = "grey40"
+  ) +
+  geom_line(linewidth = 1.3) +
+  scale_x_continuous(
+    breaks = seq(0, 100, 10),
+    limits = c(20, 80)
+  ) +
+  scale_y_continuous(
+    breaks = seq(0, 100, 10),
+    limits = c(0, 70)
+  ) +
+  labs(
+    x = "% reaching the target test level",
+    y = "% advised HAVO or higher",
+    colour = "School disadvantage"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "top",
+    panel.grid.minor = element_blank()
+  )
+
+fig_draft
+
+ggsave(
+  "figures/final-viz-draft-1.png",
+  fig_draft,
+  width = 8,
+  height = 6,
+  dpi = 300
+)
+```
