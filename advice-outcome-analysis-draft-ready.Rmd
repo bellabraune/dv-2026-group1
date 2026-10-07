@@ -12,7 +12,7 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 rm(list = ls())
 
-source(here("scripts", "00-packages.R"))
+source("scripts/00-packages.R")
 
 source(here("scripts", "01-get-data.R"))
 ```
@@ -524,7 +524,7 @@ run_check <- function(suppressed = 2.5, split = 0.5) {
 
   dat <- adv_check |>
     inner_join(ref_check, by = c("inst", "vest")) |>
-    inner_join(sw_model, by = c("inst", "vest")) |>
+    inner_join(sw_model, by = "inst") |>
     filter(!is.na(pct_test), !is.na(pct_havo_plus))
 
   fit <- lm(pct_havo_plus ~ pct_test * schoolweging, data = dat)
