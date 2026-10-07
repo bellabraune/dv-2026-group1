@@ -10,57 +10,44 @@ output:
 
 **Exploratory Analysis**
 
----
+------------------------------------------------------------------------
 
-# Considerations 
-In order to explore the RQ, the data will need to be filtered and cleaned. Firstly, the worksheet, data description and assignment 1, highlight several aspects of the data which should be considered in the analysis. 
+# Considerations
 
-**a. Schools differ in size, but rows contain one school.**  
-The data concerns information at the school-level not the student-level. Thus make sure to draw conclusions considering this information. Choices should be made as to whether to weigh schools by their number of children. Be cautious with making conclusions about individual students. 
+In order to explore the RQ, the data will need to be filtered and cleaned. Firstly, the worksheet, data description and assignment 1, highlight several aspects of the data which should be considered in the analysis.
 
-**b. How to handle the <5 counts?**  
-DUO hides any count below 5 and writes the text "<5" instead. This happens a lot in referentieniveaus and schooladviezen. If you simply drop the schools with a "<5" somewhere,
-almost no schools are left over. Thus either replace these with a specific number or try out different values to see if it changes the results? (robustness check).  
+**a. Schools differ in size, but rows contain one school.**\
+The data concerns information at the school-level not the student-level. Thus make sure to draw conclusions considering this information. Choices should be made as to whether to weigh schools by their number of children. Be cautious with making conclusions about individual students.
 
+**b. How to handle the \<5 counts?**\
+DUO hides any count below 5 and writes the text "\<5" instead. This happens a lot in referentieniveaus and schooladviezen. If you simply drop the schools with a "\<5" somewhere, almost no schools are left over. Thus either replace these with a specific number or try out different values to see if it changes the results? (robustness check).
 
-**c. Should we include provider as control variable?**  
-If so, eindscores has seperate columns for the providers in a wide format, instead of one “provider” column. Use pivot_longer() to get one row per school per provider, and keep the provider with the most students (about 96% of schools use exactly one provider). Also, only compare providers based on the reference level and not on the average scores. As certain schools might systematically choose for a specific type of doorstroomtoets, and some providers are associated with larger discrepencies between scores and schooladvice. 
+**c. Should we include provider as control variable?**\
+If so, eindscores has seperate columns for the providers in a wide format, instead of one “provider” column. Use pivot_longer() to get one row per school per provider, and keep the provider with the most students (about 96% of schools use exactly one provider). Also, only compare providers based on the reference level and not on the average scores. As certain schools might systematically choose for a specific type of doorstroomtoets, and some providers are associated with larger discrepencies between scores and schooladvice.
 
+# Data Descriptives
 
+## Schooladviezen
 
-# Data Descriptives 
+The csv file "schooladviezen_2024-2025.csv" contains the number of students per school who received each school advice (the final advice, after any reconsideration). In order the schooladviezen are:\
+*VSO* special-needs secondary education *PRO* practical education *VMBO_B* VMBO, basic track *VMBO_B_K* combined advice VMBO-B / VMBO-K *VMBO_K* VMBO, “framework” track *VMBO_K_GT* combined advice VMBO-K / VMBO-GT *VMBO_GT VMBO*, mixed/theoretical track *VMBO_GT_HAVO* combined advice VMBO-GT / HAVO *HAVO* senior general secondary education *HAVO_VWO* combined advice HAVO / VWO *VWO* pre-university education *ADVIES_NIET_MOGELIJK* no advice possible
 
-## Schooladviezen 
-The csv file "schooladviezen_2024-2025.csv" contains the number of students per school who received each school advice (the final advice, after any reconsideration). In order the schooladviezen are:  
-*VSO*	special-needs secondary education
-*PRO*	practical education
-*VMBO_B*	VMBO, basic track
-*VMBO_B_K*	combined advice VMBO-B / VMBO-K
-*VMBO_K*	VMBO, “framework” track
-*VMBO_K_GT*	combined advice VMBO-K / VMBO-GT
-*VMBO_GT	VMBO*, mixed/theoretical track
-*VMBO_GT_HAVO*	combined advice VMBO-GT / HAVO
-*HAVO*	senior general secondary education
-*HAVO_VWO*	combined advice HAVO / VWO
-*VWO*	pre-university education
-*ADVIES_NIET_MOGELIJK*	no advice possible
+## Schoolweging
 
-## Schoolweging  
-The csv file "schoolweging_2022-2025.ods" contains the *schoolweging* score for each school. This score represents how socio-economically disadvantaged the school’s student population is, based on e.g. the parents’ education level and income. Higher = more disadvantaged. Values run roughly from 20 to 40. Additionally, for each school the number of students is given and the *spread*, how much the students within the school differ from each other in disadvantage. 
+The csv file "schoolweging_2022-2025.ods" contains the *schoolweging* score for each school. This score represents how socio-economically disadvantaged the school’s student population is, based on e.g. the parents’ education level and income. Higher = more disadvantaged. Values run roughly from 20 to 40. Additionally, for each school the number of students is given and the *spread*, how much the students within the school differ from each other in disadvantage.
 
-## Eindscores 
-the csv file "eindscores_2024-2025.csv" 
+## Eindscores
 
-## Referentieniveaus 
-the csv file "referentieniveaus_2024-2025.csv" 
+the csv file "eindscores_2024-2025.csv"
 
+## Referentieniveaus
 
-# Reading the Data 
-In assignment 1 code is given to merge the different data files. The dataset "school_data", created below, can readily be employed as it includes the following:  
-- the primary test provider for each school
-- the schoolweging weighted by the number of students on each school (NA's still included) 
-- The percentage of students reaching the target reference level (score), designed to make provider-independent
+the csv file "referentieniveaus_2024-2025.csv"
 
+# Reading the Data
+
+In assignment 1 code is given to merge the different data files. The dataset "school_data", created below, can readily be employed as it includes the following:\
+- the primary test provider for each school - the schoolweging weighted by the number of students on each school (NA's still included) - The percentage of students reaching the target reference level (score), designed to make provider-independent
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -69,7 +56,7 @@ rm(list = ls())
 
 # installs (if missing) and loads every package this project uses - add any
 # new packages to scripts/00-packages.R, not here
-source("../scripts/00-packages.R")
+source(here("scripts", "00-packages.R"))
 
 # downloads the data into data/raw/ if you don't already have it, then loads
 # eindscores, referentieniveaus, schooladviezen and schoolweging into this
@@ -144,9 +131,10 @@ provider_colors <- c(
 )
 ```
 
-# Data Exploration 
+# Data Exploration
 
-## Data Descriptives 
+## Data Descriptives
+
 ```{r helper function}
 # function to convert character to value, default fill-value is 2.5 
 convert_count <- function(x, fill_value = 2.5) {
@@ -155,9 +143,6 @@ convert_count <- function(x, fill_value = 2.5) {
   
 }
 ```
-
-
-
 
 ```{r data descriptives 1: advice counts}
 fill <- 3 
@@ -173,9 +158,10 @@ descriptives |>
   
 ```
 
+## Boxplot: Exploring the Distribution of schoolweging by provider
 
-## Boxplot: Exploring the Distribution of schoolweging by provider 
-The schoolweights have already been weighted by the number of students in the schools. The provider is the primary provider of a school if they employ multiple doorstroomtoetsen. 
+The schoolweights have already been weighted by the number of students in the schools. The provider is the primary provider of a school if they employ multiple doorstroomtoetsen.
+
 ```{r}
 # store national average of schoolweging, only including schools with a score 
 nat_average <- school_data |>
@@ -207,4 +193,3 @@ p <- school_data |>
 
 ggplotly(p)
 ```
-
