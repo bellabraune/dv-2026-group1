@@ -22,6 +22,8 @@ if (no_cran_mirror) {
 }
 
 packages <- c(
+  "sysfonts", # For loading and managing fonts, including Google Fonts
+  "showtext", # For rendering custom fonts in plots
   "here", # file paths that work from the project root AND from report/
   "readODS", # reads the schoolweging .ods spreadsheet
   "cowplot", # combining several ggplots into one figure (plot_grid())
