@@ -522,7 +522,7 @@ interactive_plot <- interactive_plot |>
         showarrow = FALSE,
         xanchor = "left",
         align = "left",
-        font = list(size = 18)
+        font = list(size = group_px$title)
       ),
       # --- subtitle --- 
       list(
@@ -530,9 +530,7 @@ interactive_plot <- interactive_plot |>
         y = 1,
         xref = "paper",
         yref = "paper",
-        xanchor = "left", 
         yanchor = "bottom",
-        align = "left", 
         yshift = 66,
         text = paste0(
           "Compare the overall relationship with predictions at different ",
@@ -541,18 +539,19 @@ interactive_plot <- interactive_plot |>
         showarrow = FALSE,
         xanchor = "left",
         align = "left",
-        font = list(size = 12,
+        font = list(size = group_px$subtitle,
                     color = group_sec_text)
       )
     ),
     xaxis = list(
       title = "% reaching the target test level",
       range = c(20, 85),
+      showline = TRUE, # show the line above the x-axis 
       automargin = TRUE
     ),
     yaxis = list(
       title = "% advised HAVO or higher",
-      range = c(0, 70),
+      range = c(-3, 70),
       automargin = TRUE
     ),
     legend = list(
