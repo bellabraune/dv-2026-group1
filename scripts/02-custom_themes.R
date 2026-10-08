@@ -128,3 +128,40 @@ scale_fill_group1 <- function(...) {
   scale_color_manual(values = group_colors, ...)
 }
 
+# ---- theme for interactive plots ----
+# same aesthetics as theme_static but applicable to plotly plots 
+# use it as last step: plotly_plot |> theme_interactive()
+theme_interactive <- 
+  function(p, base_size = group_b_size, base_family = group_font) {
+    size <- base_size * 96 / 72 # ggplot sizes are points, plotly needs pixels
+    
+    p <- p |>
+      layout(
+        # ---- Text ----
+        font = list(family = base_family,
+                    size = size,
+                    color = group_prim_text),
+        # ---- Background and Grid ----
+        paper_bgcolor = group_bg_col, 
+        plot_bgcolor = group_bg_col,
+        xaxis = list(showgrid = FALSE,
+                     zeroline = FALSE,
+                     tickfont = list(size = size * 0.8,
+                                     color = group_sec_text)), 
+        yaxis = list(showgrid = FALSE,
+                     zeroline = FALSE,
+                     tickfont = list(size = size * 0.8,
+                                     color = group_sec_text)),
+        # ---- legend ----
+        legend = list(
+          title = list(font = list(size = size * 0.9,
+                                   color = group_prim_text)),
+          font = list(size = size * 0.85,
+                      color = group_sec_text)
+        )
+      )
+    # showtext doesn't work in plotly 
+    font_url <- paste0("https://fonts.googleapis.com/css2?family=", base_family,
+                       ":wght@500;700&display=swap")
+    htmlwidgets::prependContent(p, htmltools::tags$link(rel = "stylesheet", href = font_url))
+  }
