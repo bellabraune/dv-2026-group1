@@ -9,20 +9,20 @@ library(plotly)
 # source(here("scripts", "02-custom_themes.R")) 
 # 
 # --- Static plots ---
-# add theme and colour scale at the end 
-#  e.g. ggplot() + ... + scale_colour_group1() + theme_static()
+# add theme and color scale at the end 
+#  e.g. ggplot() + ... + scale_color_group1() + theme_static()
 # 
 # --- Interactive plots ---
 # pipe the plot into the theme as the last step 
 # e.g. interactive_plot |> theme_interactive()
 # 
 # ---- Things plotly theme will not be able to do ---- 
-#  - point and line colours, need to be set in the intitial graph and in 
-#    list with the group colours can be specified according to value 
+#  - point and line colors, need to be set in the intitial graph and in 
+#    list with the group colors can be specified according to value 
 #  - bold text: wrap it in <b></b>, e.g. title = "<b>My axis title</b>"
 #  - the font is loaded from Google Fonts, so it needs internet;
 #    without internet plotly falls back to a standard sans-serif font
-#  - plotly needs colour codes 
+#  - plotly needs color codes 
 
 # note: think this is a very nice website to play around with color combinations
 # https://projects.susielu.com/viz-palette 
@@ -36,8 +36,8 @@ library(plotly)
 # 1. --- Text ---
 group_font <- "Quicksand" # font family
 group_b_size <- 13 # base text size
-group_prim_text <- "#3f1d00" # main text colour, applied to titles
-group_sec_text <- "#553018" # secondary text colour
+group_prim_text <- "#3f1d00" # main text color, applied to titles
+group_sec_text <- "#553018" # secondary text color
 
 # load the google font using different weights
 font_add_google(
@@ -52,8 +52,8 @@ showtext_auto()
 group_bg_col <- "#ffffff" # plot background
 group_grid_col <- "grey90" # gridlines
 
-# 3. --- Data colours ---
-group_colours <- c(
+# 3. --- Data colors ---
+group_colors <- c(
   "Lower disadvantage" = "#8c510a",
   "Typical" = "#56a588",
   "Higher disadvantage" = "#01665e"
@@ -69,32 +69,32 @@ theme_static <-
     theme_minimal(base_size = base_size, base_family = base_family) +
     theme(
       # ---- Text ----
-      text = element_text(colour = group_prim_text),
+      text = element_text(color = group_prim_text),
       plot.title = element_text(
         face = "bold",
         size = rel(1.3),
-        colour = group_prim_text,
+        color = group_prim_text,
         margin = margin(b = 4)
       ),
       plot.subtitle = element_text(
         face = "plain",
-        colour = group_sec_text,
+        color = group_sec_text,
         margin = margin(b = 10)
       ),
       plot.caption = element_text(
         size = rel(0.8),
-        colour = group_sec_text
+        color = group_sec_text
       ),
       axis.title = element_text(
         face = "bold",
-        colour = group_prim_text
+        color = group_prim_text
       ),
-      axis.text = element_text(colour = group_sec_text),
+      axis.text = element_text(color = group_sec_text),
 
       # ---- Background and Grid ----
       plot.background = element_rect(
         fill = group_bg_col,
-        colour = NA
+        color = NA
       ),
       panel.grid.major = element_blank(),
       panel.grid.minor = element_blank(),
@@ -104,11 +104,11 @@ theme_static <-
       legend.title = element_text(
         size = rel(0.9),
         face = "bold",
-        colour = group_prim_text
+        color = group_prim_text
       ),
       legend.text = element_text(
         size = rel(0.85),
-        colour = group_sec_text
+        color = group_sec_text
       ),
 
       # ---- Spacing ----
@@ -119,12 +119,12 @@ theme_static <-
 
 # applying the group color palette
 # --- custom color palette can be set at the top ---
-scale_colour_group1 <- function(...) {
-  scale_colour_manual(values = group_colours, ...)
+scale_color_group1 <- function(...) {
+  scale_color_manual(values = group_colors, ...)
 }
 
 # --- custom color palette for fill colors ---
 scale_fill_group1 <- function(...) {
-  scale_colour_manual(values = group_colours, ...)
+  scale_color_manual(values = group_colors, ...)
 }
 
