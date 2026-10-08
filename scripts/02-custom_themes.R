@@ -38,6 +38,10 @@ group_font <- "Quicksand" # font family
 group_b_size <- 13 # base text size
 group_prim_text <- "#3f1d00" # main text color, applied to titles
 group_sec_text <- "#553018" # secondary text color
+group_px <- list(
+  title = 20,
+  subtitle = 16
+)
 
 # load the google font using different weights
 font_add_google(
@@ -133,8 +137,10 @@ scale_fill_group1 <- function(...) {
 # use it as last step: plotly_plot |> theme_interactive()
 theme_interactive <- 
   function(p, base_size = group_b_size, base_family = group_font) {
-    size <- base_size * 96 / 72 # ggplot sizes are points, plotly needs pixels
+    # size of all the labels match the subtitle 
+    size <- group_px$subtitle 
     
+  
     p <- p |>
       layout(
         # ---- Text ----
