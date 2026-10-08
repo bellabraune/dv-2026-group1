@@ -41,3 +41,4 @@ if (length(missing) > 0) install.packages(missing)
 for (pkg in setdiff(packages, "rmarkdown")) {
   library(pkg, character.only = TRUE)
 }
+

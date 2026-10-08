@@ -9,21 +9,18 @@ output: html_document
 
 # General Shared Notes about the project 
 
-## Part 1
+## P
 
-Divide the plots per tests because the test scores are currently comparable or on the scale. They must be scaled. 
+the prosentage of student passing the target test level and prosentage of students who move on to HAVO is a positive correlation. However, school with more disadvantage with teh same passing score, end up being less adviced to HAVO, see plot. 
 
+1. Considering making the visualization into an interactive plot that moves from one line showing the correlation for a "general" school weight value, and then you can press something that allows to see the relationship at different school weight values.
 
+2. How can we incorporate test providers into this picture? What would that tell us about the data and results. 
 
-### Brainstorm Exploratory Visualization ideas
+3. Create a predictive model that looks at test results predicting the school a kid is going to. Then get those predictions and actually compare them to the real school advice. If these residuals are large (low accuracy) than there might be something else that's influencing what school a child is sent to.
+Maybe if we  include then a second predictor in the model, which is "school weights" to see weather the model accuracy increases, when comparing predicted and obs school advice. 
+This would then allow us to move further and see how school weight differentiates. 
 
-Which schools use what type of tests? Does this depend on the region of the Netherlands?
-
-Measure of quality of the school: see if it correlates with type of test chosen by school. 
-- Scatter plot with a fitted linear model (geom_smooth)
-
-
-The average test score, and the average teacher score, per tests/scores
 
 
 
