@@ -350,45 +350,16 @@ prediction_data <- expand_grid(
 To make the widening gap easier to interpret, we compare the lower- and higher-disadvantage predictions at several test-performance values.
 
 ```{r moderation-gap-check}
-gap_check <- expand_grid(
-  pct_test = c(25, 40, 55, 70),
-  schoolweging = c(sw_values[[1]], sw_values[[3]])
-) |>
-  mutate(predicted = predict(model_havo, newdata = pick(everything()))) |>
-  arrange(pct_test, schoolweging) |>
-  group_by(pct_test) |>
-  summarise(
-    lower_disadvantage = first(predicted),
-    higher_disadvantage = last(predicted),
-    gap = higher_disadvantage - lower_disadvantage,
-    .groups = "drop"
-  )
-
-gap_check
-```
-
-The predicted difference is small at lower test-performance levels and widens as test performance rises. At 70% test performance, the predicted HAVO-or-higher advice gap between the 25th and 75th percentiles of school disadvantage is about **8 percentage points**.
-
-### Interactive visualization
-
-The interactive plot has two states:
-
-1. **Overall:** observed schools and the overall relationship between test performance and HAVO-or-higher advice.
-2. **Show school disadvantage:** schools are coloured by broad disadvantage group and the overall line is replaced by predictions at the 25th, 50th, and 75th percentiles of `schoolweging`.
-
-The broad groups used to colour the points are only a visual aid. The model itself continues to use continuous `schoolweging`.
-
-```{r interactive-data}
 model_data <- model_data |>
   mutate(
     disadvantage_group = case_when(
       schoolweging <= sw_values[[1]] ~ "Lower disadvantage",
       schoolweging >= sw_values[[3]] ~ "Higher disadvantage",
-      TRUE ~ "Typical"
+      TRUE ~ NA_character_
     ),
     disadvantage_group = factor(
       disadvantage_group,
-      levels = c("Lower disadvantage", "Typical", "Higher disadvantage")
+      levels = c("Lower disadvantage", "Higher disadvantage")
     )
   )
 
@@ -397,6 +368,7 @@ high_reference <- prediction_data |>
   select(pct_test, high_fit = fit)
 
 prediction_interactive <- prediction_data |>
+  filter(disadvantage %in% c("Lower disadvantage", "Higher disadvantage")) |>
   left_join(high_reference, by = "pct_test") |>
   mutate(
     difference_high = fit - high_fit,
@@ -404,7 +376,7 @@ prediction_interactive <- prediction_data |>
       "<b>", disadvantage, "</b>",
       "<br><br>Test performance: ", round(pct_test, 1), "%",
       "<br>Predicted HAVO+ advice: ", round(fit, 1), "%",
-      "<br><br><b>Compared with higher disadvantage:</b>",
+      "<br><br><b>Compared with higher-disadvantage schools:</b>",
       "<br><b>",
       if_else(
         abs(difference_high) < 1e-8,
@@ -419,6 +391,19 @@ prediction_interactive <- prediction_data |>
     )
   )
 
+
+gap_70 <- predict(
+  model_havo,
+  newdata = tibble(
+    pct_test = 70,
+    schoolweging = as.numeric(sw_values[c(1, 3)])
+  )
+) |>
+  diff() |>
+  abs() |>
+  round(1)
+
+
 overall_model <- lm(pct_havo_plus ~ pct_test, data = model_data)
 
 overall_data <- tibble(
@@ -431,12 +416,60 @@ overall_data <- tibble(
   mutate(fit = predict(overall_model, newdata = pick(everything())))
 ```
 
-```{r interactive-plot, fig.width = 11, fig.height = 7, out.width = "100%"}
-# removed the call for group_colours here 
+The predicted difference is small at lower test-performance levels and widens as test performance rises. At 70% test performance, the predicted HAVO-or-higher advice gap between the 25th and 75th percentiles of school disadvantage is about **8 percentage points**.
 
-interactive_plot <- plot_ly()
+### Interactive visualization
 
-# Default state: neutral school dots.
+The interactive plot has two states:
+
+1. **Overall:** observed schools and the overall relationship between test performance and HAVO-or-higher advice.
+2. **Show school disadvantage:** schools are coloured by broad disadvantage group and the overall line is replaced by predictions at the 25th, 50th, and 75th percentiles of `schoolweging`.
+
+The broad groups used to colour the points are only a visual aid. The model itself continues to use continuous `schoolweging`.
+
+```{r interactive-data}
+# Title and subtitles
+title_text <- paste0(
+  "<b>The <span style='color:", group_colors[["Higher disadvantage"]],
+  "'>Hidden Gap</span> Between Test Performance",
+  "<br>and School Advice</b>"
+)
+
+subtitle_overall <- paste0(
+  "Schools with better test results tend to give more HAVO+ advice.",
+  "<br>But does this relationship hold equally across schools?"
+)
+
+subtitle_gap <- paste0(
+  "At schools where 70% of pupils reach the target level,",
+  "<br><b>about ", round(gap_70), " fewer pupils per 100</b> ",
+  "are predicted to receive HAVO+ advice",
+  "<br>in <span style='color:", group_colors[["Higher disadvantage"]],
+  "'><b>higher-disadvantage schools</b></span> than in ",
+  "<span style='color:", group_colors[["Lower disadvantage"]],
+  "'><b>lower-disadvantage schools</b></span>."
+)
+
+# Methodological notes and attribution
+footnote_1 <- paste0(
+  "<b>Additional information:</b> Each dot represents one school (N = ",
+  format(nrow(model_data), big.mark = ","),
+  "). Test results combine the share of pupils reaching target levels",
+  "<br>in maths and reading. Lower and higher disadvantage refer to the bottom",
+  " and top 25% of schools by schoolweging. The lines are model predictions",
+  "<br>at the 25th and 75th percentiles. Axes display 0-100% for test",
+  " attainment and 0-80% for HAVO-or-higher advice."
+)
+
+footnote_2 <- paste0(
+  "<b>Source:</b> DUO, school year 2024-2025; ",
+  "schoolweging (2022-2025).",
+  "<br><b>Authors:</b> Matheus Nacif, Ilinca Anton, Isabella Braune."
+)
+
+interactive_plot <- plot_ly(height = 850)
+
+# Default state: all schools
 interactive_plot <- interactive_plot |>
   add_markers(
     data = model_data,
@@ -447,8 +480,8 @@ interactive_plot <- interactive_plot |>
     showlegend = FALSE
   )
 
-# Disadvantage-coloured dots, hidden initially.
-for (group in levels(model_data$disadvantage_group)) {
+# Lower- and higher-disadvantage dots
+for (group in c("Lower disadvantage", "Higher disadvantage")) {
   group_data <- model_data |>
     filter(disadvantage_group == group)
 
@@ -461,7 +494,7 @@ for (group in levels(model_data$disadvantage_group)) {
       marker = list(
         color = group_colors[[group]],
         size = 5,
-        opacity = 0.20
+        opacity = 0.22
       ),
       hoverinfo = "skip",
       visible = FALSE,
@@ -470,15 +503,14 @@ for (group in levels(model_data$disadvantage_group)) {
     )
 }
 
-# Overall relationship, visible initially.
+# Overall fitted relationship
 interactive_plot <- interactive_plot |>
   add_lines(
     data = overall_data,
     x = ~pct_test,
     y = ~fit,
-    line = list(color = group_sec_text,
-                width = 5),
-    hovertemplate = paste(
+    line = list(color = group_sec_text, width = 5),
+    hovertemplate = paste0(
       "<b>Overall relationship</b>",
       "<br><br>Test performance: %{x:.1f}%",
       "<br>Predicted HAVO+ advice: %{y:.1f}%",
@@ -487,8 +519,8 @@ interactive_plot <- interactive_plot |>
     showlegend = FALSE
   )
 
-# Disadvantage-specific prediction lines, hidden initially.
-for (group in levels(prediction_interactive$disadvantage)) {
+# Lower- and higher-disadvantage predictions
+for (group in c("Lower disadvantage", "Higher disadvantage")) {
   line_data <- prediction_interactive |>
     filter(disadvantage == group)
 
@@ -509,48 +541,40 @@ for (group in levels(prediction_interactive$disadvantage)) {
 
 interactive_plot <- interactive_plot |>
   layout(
-    height = 650,
-    margin = list(l = 75, r = 25, t = 160, b = 95),
-      
-    # place the title and subtitle at a fixed pixel distance above the plot
-    # ensures spacing stays the same when the plot is resized 
+    margin = list(l = 85, r = 25, t = 225, b = 240),
+
     annotations = list(
-      # --- title --- 
+      # Title
       list(
         x = 0,
         y = 1,
         xref = "paper",
         yref = "paper",
-        xanchor = "left", 
-        yanchor = "bottom",
-        align = "left", 
-        yshift = 100,
-        text = paste0(
-          "<b>The Hidden Gap Between Test Performance",
-          "<br>and School Advice</b>"
-        ),
-        showarrow = FALSE,
-        font = list(size = group_px$title)
-      ),
-      # --- subtitle --- 
-      list(
-        x = 0,
-        y = 1,
-        xref = "paper",
-        yref = "paper",
-        yanchor = "bottom",
-        yshift = 66,
-        text = paste0(
-          "Revealing larger discrepancies among ",
-          "high disadvantage schools"
-        ),
-        showarrow = FALSE,
         xanchor = "left",
+        yanchor = "bottom",
         align = "left",
-        font = list(size = group_px$subtitle,
-                    color = group_sec_text)
+        yshift = 112,
+        text = title_text,
+        showarrow = FALSE,
+        font = list(size = group_px$title, color = group_prim_text)
       ),
-      # --- interaction hint ---
+
+      # Dynamic subtitle (annotation index 1)
+      list(
+        x = 0,
+        y = 1,
+        xref = "paper",
+        yref = "paper",
+        xanchor = "left",
+        yanchor = "bottom",
+        align = "left",
+        yshift = 58,
+        text = subtitle_overall,
+        showarrow = FALSE,
+        font = list(size = group_px$subtitle, color = group_sec_text)
+      ),
+
+      # Hover instruction
       list(
         x = 1,
         y = 1,
@@ -562,19 +586,55 @@ interactive_plot <- interactive_plot |>
         text = "Hover over the lines to compare predictions",
         showarrow = FALSE,
         font = list(size = 12, color = group_sec_text)
+      ),
+
+      # Additional information
+      list(
+        x = 0,
+        y = 0,
+        xref = "paper",
+        yref = "paper",
+        xanchor = "left",
+        yanchor = "top",
+        yshift = -105,
+        align = "left",
+        text = footnote_1,
+        showarrow = FALSE,
+        font = list(size = 11, color = group_sec_text)
+      ),
+
+      # Source and authors
+      list(
+        x = 0,
+        y = 0,
+        xref = "paper",
+        yref = "paper",
+        xanchor = "left",
+        yanchor = "top",
+        yshift = -180,
+        align = "left",
+        text = footnote_2,
+        showarrow = FALSE,
+        font = list(size = 11, color = group_sec_text)
       )
     ),
+
     xaxis = list(
-      title = "% reaching the target test level",
-      range = c(20, 85),
-      showline = TRUE, # show the line above the x-axis 
+      title = "Pupils reaching the target test level (%)",
+      range = c(0, 100),
+      tickvals = seq(0, 100, 20),
+      showline = TRUE,
       automargin = TRUE
     ),
+
     yaxis = list(
-      title = "% advised HAVO or higher",
-      range = c(-3, 70),
+      title = "Pupils receiving HAVO or higher advice (%)",
+      range = c(0, 80),
+      tickvals = seq(0, 80, 20),
+      showline = TRUE,
       automargin = TRUE
     ),
+
     legend = list(
       orientation = "h",
       x = 0.5,
@@ -582,6 +642,7 @@ interactive_plot <- interactive_plot |>
       xanchor = "center",
       yanchor = "middle"
     ),
+
     updatemenus = list(
       list(
         type = "buttons",
@@ -591,12 +652,13 @@ interactive_plot <- interactive_plot |>
         xanchor = "left",
         yanchor = "bottom",
         showactive = TRUE,
-        buttonwidth = 300,
-        bgcolor = "#EAE1D4", 
+        buttonwidth = 190,
+        bgcolor = "#EAE1D4",
         bordercolor = "#B9AA94",
         borderwidth = 1,
         font = list(size = 14, color = group_prim_text),
-        pad = list(b = 12), # adds empty space around the buttons 
+        pad = list(b = 12),
+
         buttons = list(
           list(
             label = "Overall relationship",
@@ -605,14 +667,18 @@ interactive_plot <- interactive_plot |>
               list(
                 visible = c(
                   TRUE,
-                  FALSE, FALSE, FALSE,
+                  FALSE, FALSE,
                   TRUE,
-                  FALSE, FALSE, FALSE
+                  FALSE, FALSE
                 )
               ),
-              list(showlegend = FALSE)
+              list(
+                showlegend = FALSE,
+                "annotations[1].text" = subtitle_overall
+              )
             )
           ),
+
           list(
             label = "By disadvantage",
             method = "update",
@@ -620,12 +686,15 @@ interactive_plot <- interactive_plot |>
               list(
                 visible = c(
                   FALSE,
-                  TRUE, TRUE, TRUE,
+                  TRUE, TRUE,
                   FALSE,
-                  TRUE, TRUE, TRUE
+                  TRUE, TRUE
                 )
               ),
-              list(showlegend = TRUE)
+              list(
+                showlegend = TRUE,
+                "annotations[1].text" = subtitle_gap
+              )
             )
           )
         )
@@ -634,6 +703,7 @@ interactive_plot <- interactive_plot |>
   )
 
 interactive_plot |> theme_interactive()
+
 ```
 
 ### Current conclusion

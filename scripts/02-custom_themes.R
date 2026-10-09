@@ -58,12 +58,11 @@ group_grid_col <- "grey90" # gridlines
 
 # 3. --- Data colors ---
 group_colors <- c(
-  "Lower disadvantage" = "#B19545",
-  "Typical" = "#667A4C",
-  "Higher disadvantage" = "#B66A4F"
+  "Lower disadvantage" = "#0072B2",
+  "Higher disadvantage" = "#D55E00"
 )
 
-group_neutral_col <- "#8F9694" # default color for data points not highlighted
+group_neutral_col <- "#9AA0A6" # default color for data points not highlighted
 
 
 # ---- theme for static plots ----
