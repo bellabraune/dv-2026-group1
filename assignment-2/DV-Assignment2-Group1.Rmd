@@ -15,12 +15,17 @@ rm(list = ls())
 
 # installs (if missing) and loads every package this project uses - add any
 # new packages to scripts/00-packages.R, not here
-source("scripts/00-packages.R")
+source(here::here("scripts", "00-packages.R"))
 
 # downloads the data into data/raw/ if you don't already have it, then loads
 # eindscores, referentieniveaus, schooladviezen and schoolweging into this
 # session - see scripts/01-get-data.R for what each one contains
-source(here("scripts", "01-get-data.R"))
+source(here::here("scripts", "01-get-data.R"))
+
+# loads the custom ggplot and plotly themes for this project 
+# see scripts/02-custom_themes.R for the available functions. 
+# the theme should only be edited within this file 
+source(here::here("scripts", "02-custom_themes.R"))
 ```
 
 ## Research question
@@ -394,18 +399,20 @@ prediction_interactive <- prediction_data |>
     difference_high = fit - high_fit,
     hover_text = paste0(
       "<b>", disadvantage, "</b>",
-      "<br>Test performance: ", round(pct_test, 1), "%",
+      "<br><br>Test performance: ", round(pct_test, 1), "%",
       "<br>Predicted HAVO+ advice: ", round(fit, 1), "%",
-      "<br>Difference from higher-disadvantage school: ",
+      "<br><br><b>Compared with higher disadvantage:</b>",
+      "<br><b>",
       if_else(
         abs(difference_high) < 1e-8,
-        "reference",
+        "Reference group",
         paste0(
           if_else(difference_high > 0, "+", ""),
           round(difference_high, 1),
           " percentage points"
         )
-      )
+      ),
+      "</b>"
     )
   )
 
@@ -422,11 +429,7 @@ overall_data <- tibble(
 ```
 
 ```{r interactive-plot}
-group_colours <- c(
-  "Lower disadvantage" = "#2C7BB6",
-  "Typical" = "#7F7F7F",
-  "Higher disadvantage" = "#D7191C"
-)
+# removed the call for group_colours here 
 
 interactive_plot <- plot_ly()
 
@@ -436,7 +439,7 @@ interactive_plot <- interactive_plot |>
     data = model_data,
     x = ~pct_test,
     y = ~pct_havo_plus,
-    marker = list(color = "grey55", size = 5, opacity = 0.35),
+    marker = list(color = group_neutral_col, size = 5, opacity = 0.35),
     hoverinfo = "skip",
     showlegend = FALSE
   )
@@ -453,9 +456,9 @@ for (group in levels(model_data$disadvantage_group)) {
       y = ~pct_havo_plus,
       name = group,
       marker = list(
-        color = group_colours[[group]],
+        color = group_colors[[group]],
         size = 5,
-        opacity = 0.15
+        opacity = 0.20
       ),
       hoverinfo = "skip",
       visible = FALSE,
@@ -470,9 +473,11 @@ interactive_plot <- interactive_plot |>
     data = overall_data,
     x = ~pct_test,
     y = ~fit,
-    line = list(width = 3),
+    line = list(color = group_sec_text,
+                width = 5),
     hovertemplate = paste(
-      "Test performance: %{x:.1f}%",
+      "<b>Overall relationship</b>",
+      "<br><br>Test performance: %{x:.1f}%",
       "<br>Predicted HAVO+ advice: %{y:.1f}%",
       "<extra></extra>"
     ),
@@ -491,8 +496,8 @@ for (group in levels(prediction_interactive$disadvantage)) {
       y = ~fit,
       name = group,
       text = ~hover_text,
-      hoverinfo = "text",
-      line = list(color = group_colours[[group]], width = 4),
+      hovertemplate = "%{text}<extra></extra>",
+      line = list(color = group_colors[[group]], width = 5),
       visible = FALSE,
       showlegend = TRUE,
       legendgroup = group
@@ -501,42 +506,66 @@ for (group in levels(prediction_interactive$disadvantage)) {
 
 interactive_plot <- interactive_plot |>
   layout(
-    margin = list(l = 75, r = 25, t = 160, b = 70),
+    margin = list(l = 75, r = 25, t = 125, b = 95),
+    
+    # place the title and subtitle at a fixed pixel distance above the plot
+    # ensures spacing stays the same when the plot is resized 
     annotations = list(
+      # --- title --- 
       list(
         x = 0,
-        y = 1.20,
+        y = 1,
         xref = "paper",
         yref = "paper",
-        text = "<b>The advice gap widens as test performance rises</b>",
+        xanchor = "left", 
+        yanchor = "bottom",
+        align = "left", 
+        yshift = 88,
+        text = "<b>The Hidden Gap between Test Performance and School Advice</b>",
         showarrow = FALSE,
-        xanchor = "left",
-        align = "left",
-        font = list(size = 18)
+        font = list(size = group_px$title)
       ),
+      # --- subtitle --- 
       list(
         x = 0,
-        y = 1.155,
+        y = 1,
         xref = "paper",
         yref = "paper",
+        yanchor = "bottom",
+        yshift = 66,
         text = paste0(
-          "Compare the overall relationship with predictions at different ",
-          "levels of school disadvantage."
+          "Does school disadvantage reveal ",
+          "differences that the overall trend hides?"
         ),
         showarrow = FALSE,
         xanchor = "left",
         align = "left",
-        font = list(size = 12)
+        font = list(size = group_px$subtitle,
+                    color = group_sec_text)
+      ),
+      # --- interaction hint ---
+      list(
+        x = 1,
+        y = 1,
+        xref = "paper",
+        yref = "paper",
+        xanchor = "right",
+        yanchor = "bottom",
+        yshift = 8,
+        text = "Hover over the lines to compare predictions",
+        showarrow = FALSE,
+        font = list(size = 12, color = group_sec_text)
       )
     ),
     xaxis = list(
       title = "% reaching the target test level",
       range = c(20, 85),
+      showline = TRUE, # show the line above the x-axis 
       automargin = TRUE
     ),
     yaxis = list(
       title = "% advised HAVO or higher",
-      range = c(0, 70),
+      range = c(-3, 70),
       automargin = TRUE
     ),
     legend = list(
@@ -551,13 +580,19 @@ interactive_plot <- interactive_plot |>
         type = "buttons",
         direction = "right",
         x = 0,
-        y = 1.03,
+        y = 1,
         xanchor = "left",
         yanchor = "bottom",
         showactive = TRUE,
+        buttonwidth = 190,
+        bgcolor = "#EAE1D4",
+        bordercolor = "#B9AA94",
+        borderwidth = 1,
+        font = list(size = 14, color = group_prim_text),
+        pad = list(b = 12), # adds empty space around the buttons 
         buttons = list(
           list(
-            label = "Overall",
+            label = "Overall relationship",
             method = "update",
             args = list(
               list(
@@ -572,7 +607,7 @@ interactive_plot <- interactive_plot |>
             )
           ),
           list(
-            label = "Show school disadvantage",
+            label = "By disadvantage",
             method = "update",
             args = list(
               list(
@@ -591,7 +626,7 @@ interactive_plot <- interactive_plot |>
     )
   )
 
-interactive_plot
+interactive_plot |> theme_interactive()
 ```
 
 ### Current conclusion

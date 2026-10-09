@@ -38,6 +38,10 @@ group_font <- "Quicksand" # font family
 group_b_size <- 13 # base text size
 group_prim_text <- "#3f1d00" # main text color, applied to titles
 group_sec_text <- "#553018" # secondary text color
+group_px <- list(
+  title = 25,
+  subtitle = 15
+)
 
 # load the google font using different weights
 font_add_google(
@@ -49,17 +53,17 @@ font_add_google(
 showtext_auto()
 
 # 2. --- Background and grid ---
-group_bg_col <- "#ffffff" # plot background
+group_bg_col <- "#F5F0E8" # plot background
 group_grid_col <- "grey90" # gridlines
 
 # 3. --- Data colors ---
 group_colors <- c(
-  "Lower disadvantage" = "#8c510a",
-  "Typical" = "#56a588",
-  "Higher disadvantage" = "#01665e"
+  "Lower disadvantage" = "#B19545",
+  "Typical" = "#667A4C",
+  "Higher disadvantage" = "#B66A4F"
 )
 
-group_neutral_col <- "#cdf1e0" # default color for data points not highlighted
+group_neutral_col <- "#8F9694" # default color for data points not highlighted
 
 
 # ---- theme for static plots ----
@@ -128,3 +132,42 @@ scale_fill_group1 <- function(...) {
   scale_color_manual(values = group_colors, ...)
 }
 
+# ---- theme for interactive plots ----
+# same aesthetics as theme_static but applicable to plotly plots 
+# use it as last step: plotly_plot |> theme_interactive()
+theme_interactive <- 
+  function(p, base_size = group_b_size, base_family = group_font) {
+    # size of all the labels match the subtitle 
+    size <- group_px$subtitle 
+    
+  
+    p <- p |>
+      layout(
+        # ---- Text ----
+        font = list(family = base_family,
+                    size = size,
+                    color = group_prim_text),
+        # ---- Background and Grid ----
+        paper_bgcolor = group_bg_col, 
+        plot_bgcolor = group_bg_col,
+        xaxis = list(showgrid = FALSE,
+                     zeroline = FALSE,
+                     tickfont = list(size = size * 0.8,
+                                     color = group_sec_text)), 
+        yaxis = list(showgrid = FALSE,
+                     zeroline = FALSE,
+                     tickfont = list(size = size * 0.8,
+                                     color = group_sec_text)),
+        # ---- legend ----
+        legend = list(
+          title = list(font = list(size = size * 0.9,
+                                   color = group_prim_text)),
+          font = list(size = size * 0.85,
+                      color = group_sec_text)
+        )
+      )
+    # showtext doesn't work in plotly 
+    font_url <- paste0("https://fonts.googleapis.com/css2?family=", base_family,
+                       ":wght@500;700&display=swap")
+    htmlwidgets::prependContent(p, htmltools::tags$link(rel = "stylesheet", href = font_url))
+  }
