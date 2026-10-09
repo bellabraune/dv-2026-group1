@@ -1,12 +1,14 @@
 ---
-title: "DV Assignment 2: The hidden gap between Test performance and School advice"
-author: "Group 1: Matheus Nacif, Ilinca Anton, Isabella Braune"
-date: "`r Sys.Date()`"
-output:
-  html_document:
+title: "DV Assignment 2: The Hidden Gap Between Test Performance and School Advice"
+author: "Group 1"
+format:
+  html:
     toc: true
-    toc_float: true
-    self_contained : true
+    embed-resources: true
+execute:
+  echo: false
+  warning: false
+  message: false
 ---
 
 ```{r setup, include = FALSE}
@@ -589,7 +591,7 @@ interactive_plot <- interactive_plot |>
         xanchor = "left",
         yanchor = "bottom",
         showactive = TRUE,
-        buttonwidth = 190,
+        buttonwidth = 250,
         bgcolor = "#EAE1D4",
         bordercolor = "#B9AA94",
         borderwidth = 1,
