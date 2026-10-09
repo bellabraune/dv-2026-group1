@@ -47,7 +47,8 @@ Every primary-school pupil receives a secondary-track advice at the end of group
 Our primary audience is **policymakers and the general public** (a newspaper-graphic reader), with school boards as a secondary audience. Since this reader is not a statistician, the visualization must carry *one* legible conclusion (advice tracks test results, and disadvantage shifts it by this much) expressed in concrete, relatable units (e.g. percentage points of students advised upward) rather than coefficients or p-values. That pushes us toward a small number of clear encodings (a fit for advantaged vs. disadvantaged schools, or a gap/residual line) and toward a single highlighted pattern, rather than a dense multivariate plot.
 
 ## Data Processing
-Below are the the main variables we're building that will support the rest of the data analysis and visualization for answering the research question.
+Below are the the main variables we're building that will support the rest of the data analysis and visualization for answering the research question. 
+Note; DUO replaces counts below 5 with “<5” to protect privacy. Dropping these would remove most small schools, so we replace them with 2.5, the midpoint of the possible values 1–4.
 
 ```{r, data processing}
 
@@ -201,10 +202,12 @@ summary(fit_ref)
 
 ```
 
-Figure 2 shows that across the 5,921 schools, the relationship between test result and advice is clearly positive (correlation 0.69): schools whose students reach the reference level in maths and reading advise a larger share of them to HAVO or VWO. Test results significantly predicted advice, b = [0.76], SE = 0.01, t([5919]) = 73.241, p < .001. This suggests that, a school where 10 percentage points more students reach the target level, ends up advising on average about 7.6 percentage points more of its students to HAVO or higher. Thus, on the whole, advice follows test results. However, test results account for only about half of the differences in advice between schools (R² = 0.48). Schools with the same test results still differed by about 12 percentage points in their advice (residual SE = 11.7). This suggests that factors other than test results also shape the advice a school gives. The next step is to investigate weather, a school's school weighting score could be such a factor. 
+Figure 2 shows that across the 5,921 schools, the relationship between test result and advice is clearly positive (correlation 0.69): schools whose students reach the reference level in maths and reading advise a larger share of them to HAVO or VWO. Test results significantly predicted advice, b = [0.76], SE = 0.01, t([5919]) = 73.241, p < .001. This suggests that, a school where 10 percentage points more students reach the target level, ends up advising on average about 7.6 percentage points more of its students to HAVO or higher. Thus, on the whole, advice follows test results. However, test results account for only about half of the differences in advice between schools (R² = 0.48). Schools with the same test results still differed by about 12 percentage points in their advice (residual SE = 11.7). This suggests that factors other than test results also shape the advice a school gives. 
 
 ### Looking at the moderator: School Weighting
-After finding that test results explain only about half of the differences in advice between schools, we turned to school weighting as a possible explanation for the rest. Before testing whether school weighting moderates the relationship between test results and advice, we examined its distribution (Figure 3). We wanted to know whether schools differ enough in school weighting to compare them, and whether some ranges, particularly the most disadvantaged schools, are represented by only a few schools.
+After finding that test results explain only about half of the differences in advice between schools, we turned to school weighting as a possible explanation for the rest. We could add school weighting to the model as a second predictor. However, that would assume that disadvantaged schools differ from other schools by the same amount at every level of test results. Our research question asks whether the relationship between test results and advice itself is the same across schools, regardless of how disadvantaged their students are. We therefore model school weighting as a moderator, by including an interaction between test results and school weighting. This allows the gap in advice between more and less disadvantaged schools to change with test performance, and lets us test whether it does instead of assuming it is constant.
+
+Before testing whether school weighting moderates the relationship between test results and advice, we examined its distribution (Figure 3). We wanted to know whether schools differ enough in school weighting to compare them, and whether some ranges, particularly the most disadvantaged schools, are represented by only a few schools.
 
 ```{r exploratory-plot-1, fig.height = 4, fig.width = 6, fig.align = "center"}
 
@@ -236,22 +239,11 @@ sw |>
   theme(panel.grid.minor = element_blank())
 ```
 
-The distribution is roughly bell-shaped and centred around 29–30 (median = [29.5]), with most schools between 22 and 37. There are no extreme outliers, and both tails contain enough schools to compare less and more disadvantaged schools. The spread is also continuous: there is no natural split into a “low” and a “high” group. To show the moderation visually, we therefore have to choose a cut-off ourselves, such as a median split at about 29.5 or three equal-sized groups (tertiles).
-
+The distribution is roughly bell-shaped and centred around 29–30 (median = [29.5]), with most schools between 22 and 37. There are no extreme outliers, and both tails contain enough schools to compare less and more disadvantaged schools. The spread is also continuous. There is no natural split into a “low” and a “high” group. Thus for the actual analysis school weighting is a treated as a continoius moderator. However, for the final visualisation we draw lines at the 25thand 75th percentiles of school weighting, representing less and more disadvantaged schools. 
 
 ## Moderation analysis
 
-The exploratory analysis above supports using the average of maths 1S and reading 2F as the measure of school-level test performance. We now test whether `schoolweging` changes the relationship between test performance and HAVO-or-higher advice.
-
-For this analysis:
-
-- privacy-suppressed counts (`"<5"`) are replaced by **2.5**;
-- split-track advice (`HAVO_VWO`) contributes **0.5** to the HAVO-or-higher outcome;
-- `schoolweging` remains continuous in the model;
-- the 25th, 50th, and 75th percentiles of `schoolweging` are used only to visualize representative levels of disadvantage.
-
 ### Prepare the analysis data
-
 ```{r prepare-moderation-data}
 names(schooladviezen) <- gsub("\\u00a0", "", names(schooladviezen))
 
@@ -307,7 +299,6 @@ model_data <- advice_data |>
 nrow(model_data)
 ```
 
-The analysis is performed at the **school level**. The outcome is the percentage receiving HAVO-or-higher advice, while test performance is based on standardized reference-level attainment rather than provider-specific raw scores.
 
 ### Model school disadvantage as a moderator
 
@@ -427,12 +418,9 @@ overall_data <- tibble(
   mutate(fit = predict(overall_model, newdata = pick(everything())))
 ```
 
-<<<<<<< HEAD
-```{r interactive-plot}
-# removed the call for group_colours here 
-=======
+
 The predicted difference is small at lower test-performance levels and widens as test performance rises. At 70% test performance, the predicted HAVO-or-higher advice gap between the 25th and 75th percentiles of school disadvantage is about **8 percentage points**.
->>>>>>> d0ca5faa28835aa739bfcd8bda77ac3cdbefaab4
+
 
 ### Interactive visualization
 
@@ -557,15 +545,9 @@ for (group in c("Lower disadvantage", "Higher disadvantage")) {
 
 interactive_plot <- interactive_plot |>
   layout(
-<<<<<<< HEAD
-    margin = list(l = 75, r = 25, t = 125, b = 95),
-    
-    # place the title and subtitle at a fixed pixel distance above the plot
-    # ensures spacing stays the same when the plot is resized 
-=======
+
     margin = list(l = 85, r = 25, t = 225, b = 240),
 
->>>>>>> d0ca5faa28835aa739bfcd8bda77ac3cdbefaab4
     annotations = list(
       # Title
       list(
@@ -573,30 +555,6 @@ interactive_plot <- interactive_plot |>
         y = 1,
         xref = "paper",
         yref = "paper",
-<<<<<<< HEAD
-        xanchor = "left", 
-        yanchor = "bottom",
-        align = "left", 
-        yshift = 88,
-        text = "<b>The Hidden Gap between Test Performance and School Advice</b>",
-        showarrow = FALSE,
-        font = list(size = group_px$title)
-      ),
-      # --- subtitle --- 
-      list(
-        x = 0,
-        y = 1,
-        xref = "paper",
-        yref = "paper",
-        yanchor = "bottom",
-        yshift = 66,
-        text = paste0(
-          "Does school disadvantage reveal ",
-          "differences that the overall trend hides?"
-        ),
-        showarrow = FALSE,
-=======
->>>>>>> d0ca5faa28835aa739bfcd8bda77ac3cdbefaab4
         xanchor = "left",
         yanchor = "bottom",
         align = "left",
