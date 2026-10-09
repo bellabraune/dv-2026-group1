@@ -1,5 +1,5 @@
 ---
-title: "DV Assignment 2: [Your Title Here]"
+title: "DV Assignment 2: The hidden gap between Test performance and School advice"
 author: "Group 1: Matheus Nacif, Ilinca Anton, Isabella Braune"
 date: "`r Sys.Date()`"
 output:
@@ -9,7 +9,7 @@ output:
 ---
 
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 # clear environment so knitting only depends on what's in this file
 rm(list = ls())
 
@@ -428,7 +428,7 @@ overall_data <- tibble(
   mutate(fit = predict(overall_model, newdata = pick(everything())))
 ```
 
-```{r interactive-plot}
+```{r interactive-plot, fig.width = 11, fig.height = 7, out.width = "100%"}
 # removed the call for group_colours here 
 
 interactive_plot <- plot_ly()
@@ -506,8 +506,9 @@ for (group in levels(prediction_interactive$disadvantage)) {
 
 interactive_plot <- interactive_plot |>
   layout(
-    margin = list(l = 75, r = 25, t = 125, b = 95),
-    
+    height = 650,
+    margin = list(l = 75, r = 25, t = 160, b = 95),
+      
     # place the title and subtitle at a fixed pixel distance above the plot
     # ensures spacing stays the same when the plot is resized 
     annotations = list(
@@ -520,8 +521,11 @@ interactive_plot <- interactive_plot |>
         xanchor = "left", 
         yanchor = "bottom",
         align = "left", 
-        yshift = 88,
-        text = "<b>The Hidden Gap between Test Performance and School Advice</b>",
+        yshift = 100,
+        text = paste0(
+          "<b>The Hidden Gap Between Test Performance",
+          "<br>and School Advice</b>"
+        ),
         showarrow = FALSE,
         font = list(size = group_px$title)
       ),
@@ -534,8 +538,8 @@ interactive_plot <- interactive_plot |>
         yanchor = "bottom",
         yshift = 66,
         text = paste0(
-          "Does school disadvantage reveal ",
-          "differences that the overall trend hides?"
+          "Revealing larger discrepancies among ",
+          "high disadvantage schools"
         ),
         showarrow = FALSE,
         xanchor = "left",
