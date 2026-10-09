@@ -1,18 +1,15 @@
 ---
-title: "DV Assignment 2: The Hidden Gap Between Test Performance and School Advice"
-author: "Group 1"
-format:
-  html:
+title: "DV Assignment 2: [Your Title Here]"
+author: "Group 1: Matheus Nacif, Ilinca Anton, Isabella Braune"
+date: "`r Sys.Date()`"
+output:
+  html_document:
     toc: true
-    embed-resources: true
-execute:
-  echo: false
-  warning: false
-  message: false
+    toc_float: true
 ---
 
 ```{r setup, include = FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = TRUE)
 # clear environment so knitting only depends on what's in this file
 rm(list = ls())
 
@@ -37,25 +34,25 @@ RQ3. Do schools with similar test results give similar secondary-school advice?
 
 Level: Inference
 
-Target audience: secondary schools, or policymakers.
-
-Instruction: At the end of primary school, every student receives a school advice for a secondary-school track (PRO, VMBO, HAVO, VWO, see the codebook). The advice is based on the teacher’s judgement and on the doorstroomtoets. In this RQ, you will investigate how closely a school’s advice follows its students’ test results, and whether this differs between schools with a more or less disadvantaged student population.
+Target audience: Policymakers.
 
 Relate a measure of the school’s advice (e.g. pct_havo_plus) to a measure of its test results (pct_maths_1s and/or pct_reading_2f), and test whether schoolweging moderates this relationship. Do two schools with the same results give the same advice, regardless of who their students are?
 
-### What are we investigating, why does it matter?
+### Why does it matter weather similar test results give similar secondary-school advice?
 
 Every primary-school pupil receives a secondary-track advice at the end of group 8 (PRO, VMBO, HAVO, or VWO) that sets their entire secondary trajectory. This advice is based on the teacher's judgement and on the doorstroomtoets, a standardized test designed to be comparable across schools. We ask whether, holding test performance constant, a school's advice still depends on how socio-economically disadvantaged its student body is (`schoolweging`). Concretely, we relate each school's share of students advised to HAVO/VWO to its share reaching the reference level in maths and/or reading, and test whether `schoolweging` shifts that relationship. It matters because if disadvantaged schools systematically assign lower tracks to students with the same demonstrated performance, then a standardized test is failing its purpose and students are being pushed down the track on the basis of context rather than ability, a live fairness concern in the Dutch debate over transfer advice.
 
-### Who is the target Audience, how does that shape the choices?
+### Who is the target audience of this report and advcie?
 
 Our primary audience is **policymakers and the general public** (a newspaper-graphic reader), with school boards as a secondary audience. Since this reader is not a statistician, the visualization must carry *one* legible conclusion (advice tracks test results, and disadvantage shifts it by this much) expressed in concrete, relatable units (e.g. percentage points of students advised upward) rather than coefficients or p-values. That pushes us toward a small number of clear encodings (a fit for advantaged vs. disadvantaged schools, or a gap/residual line) and toward a single highlighted pattern, rather than a dense multivariate plot.
 
-#### To Discuss:
+### Looking at the outcome variable: Secondary-school Advice
 
-We need to check how we want to summarise the variables. Two candidates: (1) `pct_havo_plus` — the share of students advised to HAVO or VWO, a single binary-style metric that is easy for a general audience to read; or (2) a numeric track scale (PRO = 1, VMBO = 2, HAVO = 3, VWO = 6) averaged per school, which uses the full range of the advice and does not collapse the lower tracks (PRO, SBO, VMBO) into one bucket. The choice matters: the binary is simpler to communicate, while the numeric scale is more faithful to how much of a gap a track move represents. We can pick between them once the exploratory plots make clear which measure carries the pattern we want to show.
+### Looking at the predictor: Test Results
 
-## Exploratory process
+Before we can start with the actual moderation analysis, there's a few things that could be nice getting checked out so we have an idea of how to plot or final visualization. Firstly, we must asses our main variables 
+
+we must look at weather school weighting is normally distributed, or moderator
 
 #### Figure 1: Distribution of school weighting across schools
 
@@ -79,10 +76,14 @@ sw |>
     label = paste0("median = ", round(median(sw$schoolweging), 1)),
     hjust = 0, size = 3.5, color = "grey30"
   ) +
-  scale_x_continuous(limits = c(18, 43)) +
+  scale_x_continuous(breaks = seq(20, 40, by = 5)) +
+  coord_cartesian(xlim = c(18, 43)) +
   labs(
-    x = "School weighting (higher = more disadvantaged)",
-    y = "Number of schools"
+    title = "Distribution of school weighting",
+    subtitle = "Each school gets one score; higher = more disadvantaged student population",
+    x = "School weighting",
+    y = "Number of schools",
+    caption = "Data: Inspectorate of Education / CBS, school year 2024–2025"
   ) +
   theme_minimal() +
   theme(panel.grid.minor = element_blank())
@@ -127,7 +128,8 @@ ref <- referentieniveaus |>
   )
 
 
-plot_data <- data.frame(inst = adv_ids[[1]], vest = adv_ids[[2]],
+plot_data <- data.frame(inst = adv_ids[[1]], 
+                        vest = adv_ids[[2]],
                         n_advice = adv$n_advice,
                         pct_havo_plus = adv$pct_havo_plus) |>
   inner_join(
@@ -141,10 +143,19 @@ plot_data |>
   geom_point(alpha = 0.3, size = 1, color = "#2878CC") +
   geom_smooth(method = "lm", color = "#EB6734", se = TRUE) +
   labs(
-    x = "% of students reaching the reference level (maths 1S + reading 2F)",
-    y = "% of students advised to HAVO or higher"
+    title = "Schools with better test results give more HAVO+ advice",
+    subtitle = "Each dot is one school. Schools with similar test results can still differ widely in their advice.",
+    x = "% of students reaching the target level (average of maths 1S and reading 2F)",
+    y = "% of students advised HAVO or higher",
+    caption = "Data: DUO, school year 2024–2025. Regular primary schools only. Line: linear fit with 95% interval."
   ) +
-  theme_minimal()
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold"),
+    plot.subtitle = element_text(color = "grey30"),
+    plot.caption = element_text(color = "grey50", hjust = 0),
+    panel.grid.minor = element_blank()
+  )
 ```
 
 Figure 2 shows that across the 5,921 schools, the relationship between test result and advice is clearly positive (correlation 0.69): schools whose students reach the reference level in maths and reading advise a larger share of them to HAVO or VWO. On the whole, advice tracks demonstrated performance.
@@ -155,43 +166,28 @@ If advice actually depends more on one subject than the other, averaging them we
 
 #### Figure 3:
 
-```{r exploratory-plot-3, fig.height = 4.5, fig.width = 6.5, fig.align = "center"}
-
-# share of students reaching the target level, per subject separately
-ref_subjects <- referentieniveaus |>
-  mutate(
-    tot_m = to_num(REKENEN_LAGER1F) + to_num(REKENEN_1F) + to_num(REKENEN_1S),
-    tot_r = to_num(LV_LAGER1F) + to_num(LV_1F) + to_num(LV_2F),
-    maths = 100 * to_num(REKENEN_1S) / tot_m,
-    reading = 100 * to_num(LV_2F) / tot_r
-  )
+```{r}
 
 # one row per school per subject, with readable subject names for the legend
 subject_data <- data.frame(
   inst = adv_ids[[1]], vest = adv_ids[[2]],
   n_advice = adv$n_advice,
-  pct_vwo = 100 * adv$VWO / adv$n_advice
+  pct_havo_plus = adv$pct_havo_plus
 ) |>
   inner_join(
     data.frame(
       inst = ref_ids[[1]], vest = ref_ids[[2]],
-      maths = ref_subjects$maths, reading = ref_subjects$reading
+      maths = ref$pct_m, reading = ref$pct_r
     ),
     by = c("inst", "vest")
   ) |>
   filter(n_advice > 0, !is.na(maths), !is.na(reading)) |>
-  pivot_longer(
-    c(maths, reading),
-    names_to = "subject", values_to = "pct_target"
-  ) |>
-  mutate(
-    label = if_else(subject == "maths", "Maths (1S)", "Reading (2F)")
-  ) # Make readable labels for the legend
-
+  pivot_longer(c(maths, reading), names_to = "subject", values_to = "pct_target") |>
+  mutate(label = if_else(subject == "maths", "Maths (1S)", "Reading (2F)"))
 
 subject_data |>
   ggplot(
-    aes(x = pct_target, y = pct_vwo, colour = label, fill = label)
+    aes(x = pct_target, y = pct_havo_plus, colour = label, fill = label)
   ) +
   # shape 21 is a filled circle, so the points use the fill colours
   geom_point(shape = 21, stroke = 0, alpha = 0.3, size = 1.3) +
@@ -207,18 +203,26 @@ subject_data |>
   coord_cartesian(xlim = c(0, 100), ylim = c(0, 100), expand = FALSE) +
   guides(fill = guide_legend(override.aes = list(alpha = 1, size = 2.5))) +
   labs(
-    x = "% of students reaching the target level",
-    y = "% of students advised VWO"
-  ) +
+  title = "Schools whose students reach target levels give more HAVO+ advice",
+  subtitle = "Each dot is one school; maths and reading shown separately",
+  x = "% of students reaching the target level",
+  y = "% of students advised HAVO or higher",
+  caption = "Data: DUO, school year 2024–2025. Lines: linear fit with 95% interval."
+) +
   theme_minimal() +
   theme(legend.position = "top")
 
-
-# Looking at the correlation:
+# Correlation 
 subject_data |>
   group_by(subject) |>
-  summarise(r = cor(pct_target, pct_vwo))
+  summarise(r = cor(pct_target, pct_havo_plus))
+
+subject_data |>
+  group_by(subject) |>
+  lm(pct_havo_plus ~ maths + reading, data = subject_data)
+
 ```
+
 
 Looking at Figure 3, we observe that advice is moderately related to both: slightly more strongly to maths (r = 0.55) than to reading (r = 0.49). Since the difference is small, advice does not appear to depend mainly on one subject. This supports using the average of both subjects as our measure of test results. Because the data is at school level, this describes how schools' advice relates to their overall results, not how individual students are advised.
 
@@ -431,7 +435,7 @@ overall_data <- tibble(
   mutate(fit = predict(overall_model, newdata = pick(everything())))
 ```
 
-```{r interactive-plot, fig.width = 11, fig.height = 7, out.width = "100%"}
+```{r interactive-plot}
 # removed the call for group_colours here 
 
 interactive_plot <- plot_ly()
@@ -509,9 +513,8 @@ for (group in levels(prediction_interactive$disadvantage)) {
 
 interactive_plot <- interactive_plot |>
   layout(
-    height = 650,
-    margin = list(l = 75, r = 25, t = 160, b = 95),
-      
+    margin = list(l = 75, r = 25, t = 125, b = 95),
+    
     # place the title and subtitle at a fixed pixel distance above the plot
     # ensures spacing stays the same when the plot is resized 
     annotations = list(
@@ -524,11 +527,8 @@ interactive_plot <- interactive_plot |>
         xanchor = "left", 
         yanchor = "bottom",
         align = "left", 
-        yshift = 100,
-        text = paste0(
-          "<b>The Hidden Gap Between Test Performance",
-          "<br>and School Advice</b>"
-        ),
+        yshift = 88,
+        text = "<b>The Hidden Gap between Test Performance and School Advice</b>",
         showarrow = FALSE,
         font = list(size = group_px$title)
       ),
@@ -541,8 +541,8 @@ interactive_plot <- interactive_plot |>
         yanchor = "bottom",
         yshift = 66,
         text = paste0(
-          "Revealing larger discrepancies among ",
-          "high disadvantage schools"
+          "Does school disadvantage reveal ",
+          "differences that the overall trend hides?"
         ),
         showarrow = FALSE,
         xanchor = "left",
@@ -591,8 +591,8 @@ interactive_plot <- interactive_plot |>
         xanchor = "left",
         yanchor = "bottom",
         showactive = TRUE,
-        buttonwidth = 300,
-        bgcolor = "#EAE1D4", 
+        buttonwidth = 190,
+        bgcolor = "#EAE1D4",
         bordercolor = "#B9AA94",
         borderwidth = 1,
         font = list(size = 14, color = group_prim_text),
