@@ -39,8 +39,8 @@ group_b_size <- 13 # base text size
 group_prim_text <- "#3f1d00" # main text color, applied to titles
 group_sec_text <- "#553018" # secondary text color
 group_px <- list(
-  title = 20,
-  subtitle = 16
+  title = 25,
+  subtitle = 15
 )
 
 # load the google font using different weights
@@ -53,17 +53,17 @@ font_add_google(
 showtext_auto()
 
 # 2. --- Background and grid ---
-group_bg_col <- "#ffffff" # plot background
+group_bg_col <- "#F5F0E8" # plot background
 group_grid_col <- "grey90" # gridlines
 
 # 3. --- Data colors ---
 group_colors <- c(
-  "Lower disadvantage" = "#8c510a",
-  "Typical" = "#56a588",
-  "Higher disadvantage" = "#01665e"
+  "Lower disadvantage" = "#B19545",
+  "Typical" = "#667A4C",
+  "Higher disadvantage" = "#B66A4F"
 )
 
-group_neutral_col <- "#cdf1e0" # default color for data points not highlighted
+group_neutral_col <- "#8F9694" # default color for data points not highlighted
 
 
 # ---- theme for static plots ----

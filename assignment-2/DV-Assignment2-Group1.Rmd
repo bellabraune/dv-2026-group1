@@ -399,18 +399,20 @@ prediction_interactive <- prediction_data |>
     difference_high = fit - high_fit,
     hover_text = paste0(
       "<b>", disadvantage, "</b>",
-      "<br>Test performance: ", round(pct_test, 1), "%",
+      "<br><br>Test performance: ", round(pct_test, 1), "%",
       "<br>Predicted HAVO+ advice: ", round(fit, 1), "%",
-      "<br>Difference from higher-disadvantage school: ",
+      "<br><br><b>Compared with higher disadvantage:</b>",
+      "<br><b>",
       if_else(
         abs(difference_high) < 1e-8,
-        "reference",
+        "Reference group",
         paste0(
           if_else(difference_high > 0, "+", ""),
           round(difference_high, 1),
           " percentage points"
         )
-      )
+      ),
+      "</b>"
     )
   )
 
@@ -456,7 +458,7 @@ for (group in levels(model_data$disadvantage_group)) {
       marker = list(
         color = group_colors[[group]],
         size = 5,
-        opacity = 0.15
+        opacity = 0.20
       ),
       hoverinfo = "skip",
       visible = FALSE,
@@ -472,9 +474,10 @@ interactive_plot <- interactive_plot |>
     x = ~pct_test,
     y = ~fit,
     line = list(color = group_sec_text,
-                width = 3),
+                width = 5),
     hovertemplate = paste(
-      "Test performance: %{x:.1f}%",
+      "<b>Overall relationship</b>",
+      "<br><br>Test performance: %{x:.1f}%",
       "<br>Predicted HAVO+ advice: %{y:.1f}%",
       "<extra></extra>"
     ),
@@ -493,8 +496,8 @@ for (group in levels(prediction_interactive$disadvantage)) {
       y = ~fit,
       name = group,
       text = ~hover_text,
-      hoverinfo = "text",
-      line = list(color = group_colors[[group]], width = 4),
+      hovertemplate = "%{text}<extra></extra>",
+      line = list(color = group_colors[[group]], width = 5),
       visible = FALSE,
       showlegend = TRUE,
       legendgroup = group
@@ -518,10 +521,8 @@ interactive_plot <- interactive_plot |>
         yanchor = "bottom",
         align = "left", 
         yshift = 88,
-        text = "<b>The advice gap widens as test performance rises</b>",
+        text = "<b>The Hidden Gap between Test Performance and School Advice</b>",
         showarrow = FALSE,
-        xanchor = "left",
-        align = "left",
         font = list(size = group_px$title)
       ),
       # --- subtitle --- 
@@ -533,14 +534,27 @@ interactive_plot <- interactive_plot |>
         yanchor = "bottom",
         yshift = 66,
         text = paste0(
-          "Compare the overall relationship with predictions at different ",
-          "levels of school disadvantage."
+          "Does school disadvantage reveal ",
+          "differences that the overall trend hides?"
         ),
         showarrow = FALSE,
         xanchor = "left",
         align = "left",
         font = list(size = group_px$subtitle,
                     color = group_sec_text)
+      ),
+      # --- interaction hint ---
+      list(
+        x = 1,
+        y = 1,
+        xref = "paper",
+        yref = "paper",
+        xanchor = "right",
+        yanchor = "bottom",
+        yshift = 8,
+        text = "Hover over the lines to compare predictions",
+        showarrow = FALSE,
+        font = list(size = 12, color = group_sec_text)
       )
     ),
     xaxis = list(
@@ -570,10 +584,15 @@ interactive_plot <- interactive_plot |>
         xanchor = "left",
         yanchor = "bottom",
         showactive = TRUE,
-        pad = list(b = 10), # adds empty space around the buttons 
+        buttonwidth = 190,
+        bgcolor = "#EAE1D4",
+        bordercolor = "#B9AA94",
+        borderwidth = 1,
+        font = list(size = 14, color = group_prim_text),
+        pad = list(b = 12), # adds empty space around the buttons 
         buttons = list(
           list(
-            label = "Overall",
+            label = "Overall relationship",
             method = "update",
             args = list(
               list(
@@ -588,7 +607,7 @@ interactive_plot <- interactive_plot |>
             )
           ),
           list(
-            label = "Show school disadvantage",
+            label = "By disadvantage",
             method = "update",
             args = list(
               list(
