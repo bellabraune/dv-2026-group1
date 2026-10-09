@@ -3,10 +3,6 @@ title: "Notes"
 output: html_document
 ---
 
-```{r}
-
-```
-
 # General Shared Notes about the project 
 
 ## Part 1
@@ -27,7 +23,23 @@ The average test score, and the average teacher score, per tests/scores
 
 
 
+## Part 2 
 
+### Final Tweaks To D0
+Things to fix 
+- x-axis same scale as y-axis 
+- remove typical line 
+- make sure the titles are well aligned (seems to be too much at the top)
+- colors
+- higlight area between the two outer lines? 
+
+Things to add
+- highlight (sub)title 
+- add an informative note and the source 
+  e.g. what is disadvantaged? 
+- add confidence interval 
+- maybe adjust axis texts and title (do this last)
+- 
 
 
 
