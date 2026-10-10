@@ -53,20 +53,22 @@ Our primary audience is **policymakers and the general public** (a newspaper-gra
 
 ## Data Processing
 
-Below are the the main variables we're building that will support the rest of the data analysis and visualization for answering the research question. Note; DUO replaces counts below 5 with “\<5” to protect privacy. Dropping these would remove most small schools, so we replace them with 2.5, the midpoint of the possible values 1–4.
+Below are the the main variables we're building that will support the rest of the data analysis and visualization for answering the research question. Some things to note about our data processing at this stage:
+1. DUO replaces counts below 5 with “\<5” to protect privacy. Dropping these would remove most small schools, so we replace them with 2.5, the midpoint of the possible values 1–4.
+2. To calculate the share of students advised HAVO or higher, we divide by all students who received advice. Students for whom no advice was possible, for whatever reason, are excluded (the ADVIES_NIET_MOGELIJK category). Since our outcome is the advice a school gives, these students have no outcome to count. This definition is applied throughout the data processing in this report.
+
 
 ```{r prepare-exploratory-data}
 
 # the count columns are character ("<5" privacy suppression) -> numeric first
-adv_cols <- c(
-  "PRO", "VMBO_B", "VMBO_B_K", "VMBO_K", "VMBO_K_GT", "VMBO_GT",
-  "VMBO_GT_HAVO", "HAVO", "HAVO_VWO", "VWO", "ADVIES_NIET_MOGELIJK"
+advice_cols <- c(
+   "VSO", "PRO", "VMBO_B", "VMBO_B_K", "VMBO_K", "VMBO_K_GT", "VMBO_GT",
+  "VMBO_GT_HAVO", "HAVO", "HAVO_VWO", "VWO"
 )
 
-to_num_exploratory <- function(x) {
-  v <- suppressWarnings(as.numeric(x))
-  v[is.na(v)] <- 2.5
-  v
+
+to_num <- function(x) {
+  if_else(x == "<5", 2.5, suppressWarnings(as.numeric(x)))
 }
 
 # Normalize advice headers before preparing either analysis dataset.
@@ -77,9 +79,9 @@ adv_ids <- schooladviezen[, 3:4]
 ref_ids <- referentieniveaus[, 2:3]
 
 adv <- schooladviezen |>
-  mutate(across(all_of(adv_cols), to_num_exploratory)) |>
+  mutate(across(all_of(advice_cols), to_num_exploratory)) |>
   mutate(
-    n_advice = rowSums(across(all_of(adv_cols))),
+    n_advice = rowSums(across(all_of(advice_cols))),
     pct_havo_plus = 100 * (HAVO + HAVO_VWO + VWO) / n_advice
   )
 
@@ -178,7 +180,7 @@ subject_data |>
   )
 ```
 
-Figure 1 shows that advice relates equally strongly to maths and reading (both r = 0.61). Table 1 shows in a regression with both subjects, their coefficients are practically identical (0.38 each), so advice does not depend more on one subject. The reading line lies lower only because its target is reached more often. We therefore average the two subjects into one test-result measure. Because the data are at school level, this describes how a school’s advice relates to its overall results, not how individual students are advised.
+Figure 1 shows that advice relates equally strongly to maths and reading (both r = 0.61). Table 1 shows in a regression with both subjects, their coefficients are practically identical (0.59 each), so advice does not depend more on one subject. The reading line lies lower only because its target is reached more often. We therefore average the two subjects into one test-result measure. Because the data are at school level, this describes how a school’s advice relates to its overall results, not how individual students are advised.
 
 ```{r exploratory-plot-average, fig.height = 4.5, fig.width = 6.5, fig.align = "center"}
 
@@ -270,11 +272,13 @@ The distribution is roughly bell-shaped and centred around 29–30 (median = \[2
 
 For the moderation analysis, we combined the school advice, reference-level attainment, and school weighting datasets. We used the average percentage reaching the target levels in maths (1S) and reading (2F) as our measure of test performance, as established in the exploratory analysis.
 
-We also refined our measure of HAVO-or-higher advice. The data include recommendations spanning two tracks, such as HAVO/VWO. Rather than assigning the entire HAVO/VWO category to one track, we split its count equally between HAVO and VWO. For our HAVO+ measure, this means counting half of the HAVO/VWO recommendations. This is an approximation, but it allows us to account for mixed advice without treating it as a single-track recommendation.
+### Prepare the analysis data
+
+We refined our measure of HAVO-or-higher advice. The data include recommendations spanning two tracks, such as HAVO/VWO. Rather than assigning the entire HAVO/VWO category to one track, we split its count equally between HAVO and VWO. For our HAVO+ measure, this means counting half of the HAVO/VWO recommendations. This is an approximation, but it allows us to account for mixed advice without treating it as a single-track recommendation.
 
 As before, suppressed counts (`<5`) were replaced with 2.5. We then combined the datasets using school identifiers and excluded schools with missing values for the variables used in the model.
 
-### Prepare the analysis data
+In the exploratory analysis, we only looked at the distribution of school weighting on its own, without linking it to the other data. For the model, we link it to the advice and test data. The three DUO files share the school code (INSTELLINGSCODE) and location code (VESTIGINGSCODE), but the school weighting file uses its own identifier (OVT), formatted like “00AP|C1”. The part before the “|” is the school code,and the part after does not follow the same location numbering as the DUO files.We therefore match on the school code only. When a school has several locations with a school weighting, we keep the weighting of the first location listed and assign it to all locations of that school. This affects 305 out of 5876 schools. For most of them, the difference is small: locations of the same school differ by a median of 2.2 points in school weighting, compared to a range of roughly 22–37 across schools. A few schools, however, have locations that differ by up to 14.7 points, so for those schools the assigned weighting may not reflect every location well. Finally, schools without a disadvantage weighting are exluded from the data. 
 
 ```{r prepare-moderation-data}
 advice_cols <- c(
@@ -283,7 +287,6 @@ advice_cols <- c(
 )
 
 # Only suppressed values are imputed here; other missing values remain NA.
-# This was changed based on the feedback from the first part.
 to_num <- function(x) {
   if_else(x == "<5", 2.5, suppressWarnings(as.numeric(x)))
 }
@@ -313,6 +316,7 @@ reference_data <- referentieniveaus |>
   ) |>
   select(inst, vest, pct_test)
 
+# Schoolweighting data
 weighting_data <- schoolweging |>
   transmute(
     inst = sub("\\|.*$", "", OVT),
@@ -321,13 +325,44 @@ weighting_data <- schoolweging |>
   filter(!is.na(schoolweging)) |>
   distinct(inst, .keep_all = TRUE)
 
+# how many schools in the model data are affected by the data processing choice
+multi_location <- schoolweging |>
+  filter(!is.na(schoolweging)) |>
+  count(inst = sub("\\|.*$", "", OVT)) |>
+  filter( n > 1)
+# sum(model_data$inst %in% multi_location$inst)
+
+# how much do locations of the same school differ in school weighting?
+schoolweging |>
+  filter(!is.na(schoolweging)) |>
+  mutate(inst = sub("\\|.*$", "", OVT)) |>
+  group_by(inst) |>
+  filter(n() > 1) |>
+  summarise(spread = max(schoolweging) - min(schoolweging)) |>
+  summarise(median_spread = median(spread), max_spread = max(spread))
+
+# The final model data
 model_data <- advice_data |>
   inner_join(reference_data, by = c("inst", "vest")) |>
   inner_join(weighting_data, by = "inst") |>
   filter(!is.na(pct_test), !is.na(pct_havo_plus))
 
-nrow(model_data)
+cat("Number of rows in the moderation dataframe:", nrow(model_data))
+head(model_data)
 ```
+
+```{r}
+
+# how much do locations of the same school differ in school weighting?
+schoolweging |>
+  filter(!is.na(schoolweging)) |>
+  mutate(inst = sub("\\|.*$", "", OVT)) |>
+  group_by(inst) |>
+  filter(n() > 1) |>
+  summarise(spread = max(schoolweging) - min(schoolweging)) |>
+  summarise(median_spread = median(spread), max_spread = max(spread))
+```
+
 
 ### Model school disadvantage as a moderator
 
