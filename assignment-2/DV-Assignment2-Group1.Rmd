@@ -75,7 +75,7 @@ sw |>
   annotate(
     "text",
     x = median(sw$schoolweging) + 0.5,
-    y = max(table(cut(sw$schoolweging, breaks = 40))) * 0.85,
+    y = max(table(cut(sw$schoolweging, breaks = 40))) * 1.10,
     label = paste0("median = ", round(median(sw$schoolweging), 1)),
     hjust = 0, size = 3.5, color = "grey30"
   ) +
