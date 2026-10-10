@@ -69,8 +69,10 @@ to_num_exploratory <- function(x) {
   v
 }
 
-# pull the two id columns out before mutating (their headers carry a
-# hidden character and their position differs between the two files)
+# Normalize advice headers before preparing either analysis dataset.
+names(schooladviezen) <- gsub("\\u00a0", "", names(schooladviezen))
+
+# School identifiers occupy different positions in the two source files.
 adv_ids <- schooladviezen[, 3:4]
 ref_ids <- referentieniveaus[, 2:3]
 
@@ -85,13 +87,35 @@ adv <- schooladviezen |>
 # maths (1S) and reading (2F) — removes school size as a confound
 ref <- referentieniveaus |>
   mutate(
-    tot_m = to_num_exploratory(REKENEN_LAGER1F) + to_num_exploratory(REKENEN_1F) +
-      to_num_exploratory(REKENEN_1S) + to_num_exploratory(REKENEN_2F),
-    tot_r = to_num_exploratory(LV_LAGER1F) + to_num_exploratory(LV_1F) + to_num_exploratory(LV_2F),
+    tot_m = to_num_exploratory(REKENEN_LAGER1F) +
+      to_num_exploratory(REKENEN_1F) +
+      to_num_exploratory(REKENEN_1S) +
+      to_num_exploratory(REKENEN_2F),
+    tot_r = to_num_exploratory(LV_LAGER1F) +
+      to_num_exploratory(LV_1F) + to_num_exploratory(LV_2F),
     pct_m = 100 * to_num_exploratory(REKENEN_1S) / tot_m,
     pct_r = 100 * to_num_exploratory(LV_2F) / tot_r,
     pct_ref = (pct_m + pct_r) / 2
   )
+
+# One school-level dataset for both exploratory advice plots.
+exploratory_data <- tibble(
+  inst = adv_ids[[1]],
+  vest = adv_ids[[2]],
+  n_advice = adv$n_advice,
+  pct_havo_plus = adv$pct_havo_plus
+) |>
+  inner_join(
+    tibble(
+      inst = ref_ids[[1]],
+      vest = ref_ids[[2]],
+      maths = ref$pct_m,
+      reading = ref$pct_r,
+      pct_ref = ref$pct_ref
+    ),
+    by = c("inst", "vest")
+  ) |>
+  filter(n_advice > 0)
 
 # Drop the 119 empty locations (0 students, no schoolweging)
 sw <- schoolweging |>
@@ -105,23 +129,9 @@ Our measure of test results is the percentage of a school’s students who reach
 
 ```{r exploratory-plot-subjects, fig.height = 4.5, fig.width = 6.5, fig.align = "center"}
 
-# wide version: one row per school, both subjects as columns
-subject_wide <- tibble(
-  inst = adv_ids[[1]], vest = adv_ids[[2]],
-  n_advice = adv$n_advice,
-  pct_havo_plus = adv$pct_havo_plus
-) |>
-  inner_join(
-    tibble(
-      inst = ref_ids[[1]], vest = ref_ids[[2]],
-      maths = ref$pct_m, reading = ref$pct_r
-    ),
-    by = c("inst", "vest")
-  ) |>
-  filter(n_advice > 0, !is.na(maths), !is.na(reading))
-
 # Long version: one row per school per subject
-subject_data <- subject_wide |>
+subject_data <- exploratory_data |>
+  filter(!is.na(maths), !is.na(reading)) |>
   pivot_longer(
     c(maths, reading), names_to = "subject", values_to = "pct_target"
   ) |>
@@ -173,17 +183,8 @@ Figure 1 shows that advice relates equally strongly to maths and reading (both r
 ```{r exploratory-plot-average, fig.height = 4.5, fig.width = 6.5, fig.align = "center"}
 
 # Share receiving HAVO+ advice versus average reference-level attainment
-plot_data <- tibble(
-  inst = adv_ids[[1]],
-  vest = adv_ids[[2]],
-  n_advice = adv$n_advice,
-  pct_havo_plus = adv$pct_havo_plus
-) |>
-  inner_join(
-    tibble(inst = ref_ids[[1]], vest = ref_ids[[2]], pct_ref = ref$pct_ref),
-    by = c("inst", "vest")
-  ) |>
-  filter(n_advice > 0, !is.na(pct_ref))
+plot_data <- exploratory_data |>
+  filter(!is.na(pct_ref))
 
 # Plot advice against average test performance
 plot_data |>
@@ -230,19 +231,21 @@ Before testing whether school weighting moderates the relationship between test 
 
 ```{r exploratory-plot-weighting, fig.height = 4, fig.width = 6, fig.align = "center"}
 
+sw_median <- median(sw$schoolweging)
+
 sw |>
   ggplot(aes(x = schoolweging)) +
   geom_histogram(bins = 40, fill = "#2878CC", color = "white", alpha = 0.7) +
   geom_density(fill = "#2878CC", alpha = 0.08) +
   geom_vline(
-    xintercept = median(sw$schoolweging),
+    xintercept = sw_median,
     linetype = "dashed", color = "grey30"
   ) +
   annotate(
     "text",
-    x = median(sw$schoolweging) + 0.5,
+    x = sw_median + 0.5,
     y = max(table(cut(sw$schoolweging, breaks = 40))) * 0.85,
-    label = paste0("median = ", round(median(sw$schoolweging), 1)),
+    label = paste0("median = ", round(sw_median, 1)),
     hjust = 0, size = 3.5, color = "grey30"
   ) +
   scale_x_continuous(breaks = seq(20, 40, by = 5)) +
@@ -268,8 +271,6 @@ The distribution is roughly bell-shaped and centred around 29–30 (median = \[2
 ### Prepare the analysis data
 
 ```{r prepare-moderation-data}
-names(schooladviezen) <- gsub("\\u00a0", "", names(schooladviezen))
-
 advice_cols <- c(
   "VSO", "PRO", "VMBO_B", "VMBO_B_K", "VMBO_K", "VMBO_K_GT",
   "VMBO_GT", "VMBO_GT_HAVO", "HAVO", "HAVO_VWO", "VWO"
@@ -279,9 +280,6 @@ advice_cols <- c(
 to_num <- function(x) {
   if_else(x == "<5", 2.5, suppressWarnings(as.numeric(x)))
 }
-
-adv_ids <- schooladviezen[, 3:4]
-ref_ids <- referentieniveaus[, 2:3]
 
 advice_data <- schooladviezen |>
   mutate(
@@ -385,14 +383,13 @@ prediction_interactive <- expand_grid(
     fit = predict(model_havo, newdata = pick(everything()))
   )
 
-high_reference <- prediction_interactive |>
-  filter(disadvantage == "Higher disadvantage") |>
-  select(pct_test, high_fit = fit)
-
 prediction_interactive <- prediction_interactive |>
-  left_join(high_reference, by = "pct_test") |>
+  group_by(pct_test) |>
   mutate(
-    difference_high = fit - high_fit,
+    difference_high = fit - fit[disadvantage == "Higher disadvantage"]
+  ) |>
+  ungroup() |>
+  mutate(
     hover_text = paste0(
       "<b>", disadvantage, "</b>",
       "<br><br>Test performance: ", round(pct_test, 1), "%",
@@ -436,7 +433,7 @@ The predicted difference is small at lower test-performance levels and widens as
 The interactive plot has two states:
 
 1.  **Overall:** observed schools and the overall relationship between test performance and HAVO-or-higher advice.
-2.  **Show school disadvantage:** schools are coloured by broad disadvantage group and the overall line is replaced by predictions at the 25th, 50th, and 75th percentiles of `schoolweging`.
+2.  **Show school disadvantage:** schools are coloured by broad disadvantage group and the overall line is replaced by predictions at the 25th and 75th percentiles of `schoolweging`.
 
 The broad groups used to colour the points are only a visual aid. The model itself continues to use continuous `schoolweging`.
 
