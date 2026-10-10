@@ -268,6 +268,12 @@ The distribution is roughly bell-shaped and centred around 29–30 (median = \[2
 
 ## Moderation analysis
 
+For the moderation analysis, we combined the school advice, reference-level attainment, and school weighting datasets. We used the average percentage reaching the target levels in maths (1S) and reading (2F) as our measure of test performance, as established in the exploratory analysis.
+
+We also refined our measure of HAVO-or-higher advice. The data include recommendations spanning two tracks, such as HAVO/VWO. Rather than assigning the entire HAVO/VWO category to one track, we split its count equally between HAVO and VWO. For our HAVO+ measure, this means counting half of the HAVO/VWO recommendations. This is an approximation, but it allows us to account for mixed advice without treating it as a single-track recommendation.
+
+As before, suppressed counts (`<5`) were replaced with 2.5. We then combined the datasets using school identifiers and excluded schools with missing values for the variables used in the model.
+
 ### Prepare the analysis data
 
 ```{r prepare-moderation-data}
@@ -323,7 +329,7 @@ nrow(model_data)
 
 ### Model school disadvantage as a moderator
 
-The interaction model tests whether the relationship between test performance and HAVO-or-higher advice changes with school disadvantage.
+We fitted a linear regression with an interaction between test performance and school weighting. As discussed earlier, this allows us to examine whether the relationship between test results and advice changes depending on how disadvantaged a school's student population is.
 
 ```{r moderation-model}
 model_havo <- lm(pct_havo_plus ~ pct_test * schoolweging, data = model_data)
@@ -336,11 +342,15 @@ model_results <- tibble(
 model_results
 ```
 
-The interaction is negative, meaning that the positive relationship between test performance and HAVO-or-higher advice becomes weaker as school disadvantage increases. In other words, the difference between lower- and higher-disadvantage schools becomes larger at higher levels of test performance.
+The model explained approximately 53% of the variation in HAVO-or-higher advice between schools (R² = 0.53). The interaction coefficient was negative (b = −0.033), suggesting that the positive relationship between test performance and HAVO+ advice becomes weaker as school disadvantage increases.
+
+In other words, schools with lower disadvantage show a steeper increase in HAVO+ advice as test performance rises. For more disadvantaged schools, this increase is smaller. This means that the predicted difference in advice between the two becomes larger at higher levels of test performance.
 
 #### Representative predictions
 
-The model keeps `schoolweging` continuous. The two lines used in the visualization represent its 25th and 75th percentiles.
+Although the interaction tells us how the relationship changes, its coefficient is not particularly intuitive. We therefore calculated model predictions at two representative levels of school disadvantage: the 25th and 75th percentiles of `schoolweging` (approximately 27.4 and 31.8).
+
+We chose these values because they represent meaningful differences in disadvantage without relying on the extremes of the distribution. Importantly, these are only reference values for the visualization. School weighting remains continuous in the model.
 
 ```{r moderation-predictions}
 sw_values <- quantile(
@@ -351,7 +361,7 @@ sw_values <- quantile(
 
 ```
 
-To make the widening gap easier to interpret, we compare the lower- and higher-disadvantage predictions at several test-performance values.
+To see what this means in practice, we compared the predicted percentage of HAVO+ advice at different levels of test performance.
 
 ```{r moderation-gap-check}
 model_data <- model_data |>
@@ -426,16 +436,19 @@ overall_data <- tibble(pct_test = x_line) |>
   mutate(fit = predict(overall_model, newdata = pick(everything())))
 ```
 
-The predicted difference is small at lower test-performance levels and widens as test performance rises. At 70% test performance, the predicted HAVO-or-higher advice gap between the 25th and 75th percentiles of school disadvantage is about **8 percentage points**.
+The predicted gap is relatively small when test performance is low but becomes wider as performance increases. For example, when 70% of pupils reach the target reference levels, the model predicts approximately 47% HAVO+ advice at the lower-disadvantage value, compared with 39% at the higher-disadvantage value. That is a difference of around 8 percentage points, despite the same overall test performance.
+
+This is the main finding we wanted to communicate in our visualization: similar test results do not necessarily correspond to similar advice, and the differences appear to increase at higher levels of performance.
 
 ### Interactive visualization
 
-The interactive plot has two states:
+For the final visualization, we wanted to make this difference visible without requiring readers to interpret regression coefficients.
 
-1.  **Overall:** observed schools and the overall relationship between test performance and HAVO-or-higher advice.
-2.  **Show school disadvantage:** schools are coloured by broad disadvantage group and the overall line is replaced by predictions at the 25th and 75th percentiles of `schoolweging`.
+We decided to start with the overall relationship between test performance and HAVO+ advice as it is somewhat easy to interpret. The interactive button then introduces school disadvantage, replacing the overall regression line with two predictions from the moderation model. Our intention was that the reader/viewer could uncover the differences based on school disadvantage themselves.
 
-The broad groups used to colour the points are only a visual aid. The model itself continues to use continuous `schoolweging`.
+We chose to show only the 25th and 75th percentiles rather than several lines. This makes the widening gap easier to see without overcrowding the graph. The individual schools remain visible to show the variation around the predictions, with the lower- and higher-disadvantage groups highlighted when the comparison is activated.
+
+We also added hover information showing the predicted HAVO+ percentage and its difference from the higher-disadvantage reference. This allows readers to explore the size of the gap in percentage points rather than estimating it visually. During testing, the base hover option on the plot was quite unreliable as it requires the reader to point exactly at the line and it does not work in some angles. Terefore, we recommend using the secondary option that picks up the closest hover information.
 
 ```{r interactive-data}
 # Title and subtitles.
@@ -708,6 +721,10 @@ interactive_plot |>
 
 ```
 
-### Current conclusion
+### Conclusion
 
-Schools with similar test performance do not have the same predicted HAVO-or-higher advice across levels of school disadvantage. The difference is relatively small at lower test-performance levels and becomes larger as test performance rises. The interactive visualization is the current working version of the final plot; further interpretation, context, and narrative framing can be added later without changing the analysis above.
+Our results suggest that school disadvantage is associated with how closely secondary-school advice follows test performance. Although schools with better test results generally give more HAVO+ advice, this relationship is weaker in more disadvantaged schools. The difference is particularly noticeable at higher levels of test performance.
+
+However, these are school-level comparisons. We cannot conclude that individual pupils with identical test results receive different advice because of their socioeconomic background. Other differences between schools may also contribute to the pattern, especially considering the differences in test providers and how these are interpreted, which is an important debate now.
+
+Nevertheless, the analysis shows that test performance alone does not fully explain differences in secondary-school advice, and that school disadvantage is relevant to understanding them.
