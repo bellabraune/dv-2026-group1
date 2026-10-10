@@ -14,6 +14,6 @@ Verification: We decided to make it clear to eachother where AI-generated code w
 This way we were able to check if we all understood the code and if it follows our goals
 
 
-Models used:
+Models used: Claude Opus 5.5,  
 
 
