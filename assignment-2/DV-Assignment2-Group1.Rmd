@@ -52,10 +52,56 @@ Note; DUO replaces counts below 5 with “<5” to protect privacy. Dropping the
 
 ```{r, data processing}
 
+<<<<<<< HEAD
 # the count columns are character ("<5" privacy suppression) -> numeric first
 adv_cols <- c("PRO", "VMBO_B", "VMBO_B_K", "VMBO_K", "VMBO_K_GT", "VMBO_GT",
               "VMBO_GT_HAVO", "HAVO", "HAVO_VWO", "VWO", "ADVIES_NIET_MOGELIJK")
 
+=======
+## Exploratory process
+
+#### Figure 1: Distribution of school weighting across schools
+
+```{r exploratory-plot-1, fig.height = 4, fig.width = 6, fig.align = "center"}
+# Drop the 119 empty locations (0 students, no schoolweging)
+sw <- schoolweging |>
+  filter(!is.na(schoolweging))
+
+sw |>
+  ggplot(aes(x = schoolweging)) +
+  geom_histogram(bins = 40, fill = "#2878CC", color = "white", alpha = 0.7) +
+  geom_density(fill = "#2878CC", alpha = 0.08) +
+  geom_vline(
+    xintercept = median(sw$schoolweging),
+    linetype = "dashed", color = "grey30"
+  ) +
+  annotate(
+    "text",
+    x = median(sw$schoolweging) + 0.5,
+    y = max(table(cut(sw$schoolweging, breaks = 40))) * 1.10,
+    label = paste0("median = ", round(median(sw$schoolweging), 1)),
+    hjust = 0, size = 3.5, color = "grey30"
+  ) +
+  scale_x_continuous(limits = c(18, 43)) +
+  labs(
+    x = "School weighting (higher = more disadvantaged)",
+    y = "Number of schools"
+  ) +
+  theme_minimal() +
+  theme(panel.grid.minor = element_blank())
+```
+
+The distribution of `schoolweging` is roughly bell-shaped, centred around 29–30, with the bulk of schools falling between 22 and 37. There is no natural bimodal split — the spread is continuous. For the moderation analysis we'll need to pick a threshold (e.g. median split at \~29.5, or tertiles) to define "low" vs "high" disadvantage groups; the plot makes clear that no single school is an outlier, and that both tails have enough mass to compare.
+
+#### Figure 2: Share of students advised HAVO or higher, by share reaching the reference level
+
+```{r exploratory-plot-2, fig.height = 4.5, fig.width = 6.5, fig.align = "center"}
+# the count columns are character ("<5" privacy suppression) -> numeric first
+adv_cols <- c(
+  "PRO", "VMBO_B", "VMBO_B_K", "VMBO_K", "VMBO_K_GT", "VMBO_GT",
+  "VMBO_GT_HAVO", "HAVO", "HAVO_VWO", "VWO", "ADVIES_NIET_MOGELIJK"
+)
+>>>>>>> 86b6b868b2cfdff134ad6a63d7008cbba54dd207
 to_num <- function(x) {
   v <- suppressWarnings(as.numeric(x))
   v[is.na(v)] <- 2.5
@@ -86,10 +132,32 @@ ref <- referentieniveaus |>
     pct_ref = (pct_m + pct_r) / 2    # the average, will be used later
   )
 
+<<<<<<< HEAD
 # Drop the 119 empty locations (0 students, no schoolweging)
 sw <- schoolweging |>
   filter(!is.na(schoolweging))
 
+=======
+plot_data <- tibble(
+  inst = adv_ids[[1]], vest = adv_ids[[2]],
+  n_advice = adv$n_advice, pct_havo_plus = adv$pct_havo_plus
+) |>
+  inner_join(
+    tibble(inst = ref_ids[[1]], vest = ref_ids[[2]], pct_ref = ref$pct_ref),
+    by = c("inst", "vest")
+  ) |>
+  filter(n_advice > 0, !is.na(pct_ref))
+
+plot_data |>
+  ggplot(aes(x = pct_ref, y = pct_havo_plus)) +
+  geom_point(alpha = 0.3, size = 1, color = "#2878CC") +
+  geom_smooth(method = "lm", color = "#EB6734", se = TRUE) +
+  labs(
+    x = "% of students reaching the reference level (maths 1S + reading 2F)",
+    y = "% of students advised to HAVO or higher"
+  ) +
+  theme_minimal()
+>>>>>>> 86b6b868b2cfdff134ad6a63d7008cbba54dd207
 ```
 
 
@@ -102,31 +170,46 @@ Our measure of test results is the percentage of a school’s students who reach
 ```{r, name something}
 
 # one row per school per subject, with readable subject names for the legend
+<<<<<<< HEAD
 # wide version: one row per school, both subjects as columns
 subject_wide <- data.frame(
+=======
+subject_data <- tibble(
+>>>>>>> 86b6b868b2cfdff134ad6a63d7008cbba54dd207
   inst = adv_ids[[1]], vest = adv_ids[[2]],
   n_advice = adv$n_advice,
   pct_havo_plus = adv$pct_havo_plus
 ) |>
   inner_join(
-    data.frame(
+    tibble(
       inst = ref_ids[[1]], vest = ref_ids[[2]],
       maths = ref$pct_m, reading = ref$pct_r
     ),
     by = c("inst", "vest")
   ) |>
+<<<<<<< HEAD
   filter(n_advice > 0, !is.na(maths), !is.na(reading))
 
 #long version: one row per school per subject, with readable subject names for the legend
 subject_data <- subject_wide |>
   pivot_longer(c(maths, reading), names_to = "subject", values_to = "pct_target") |>
+=======
+  filter(n_advice > 0, !is.na(maths), !is.na(reading)) |>
+  pivot_longer(
+    c(maths, reading), names_to = "subject", values_to = "pct_target"
+  ) |>
+>>>>>>> 86b6b868b2cfdff134ad6a63d7008cbba54dd207
   mutate(label = if_else(subject == "maths", "Maths (1S)", "Reading (2F)"))
 
 # Plotting reading and math target levels on to school advice
 subject_data |>
+<<<<<<< HEAD
   ggplot(
     aes(x = pct_target, y = pct_havo_plus, colour = label, fill = label)
   ) +
+=======
+  ggplot(aes(x = pct_target, y = pct_vwo, colour = label, fill = label)) +
+>>>>>>> 86b6b868b2cfdff134ad6a63d7008cbba54dd207
   # shape 21 is a filled circle, so the points use the fill colours
   geom_point(shape = 21, stroke = 0, alpha = 0.3, size = 1.3) +
   geom_smooth(
@@ -305,10 +388,7 @@ nrow(model_data)
 The interaction model tests whether the relationship between test performance and HAVO-or-higher advice changes with school disadvantage.
 
 ```{r moderation-model}
-model_havo <- lm(
-  pct_havo_plus ~ pct_test * schoolweging,
-  data = model_data
-)
+model_havo <- lm(pct_havo_plus ~ pct_test * schoolweging, data = model_data)
 
 model_results <- tibble(
   r_squared = summary(model_havo)$r.squared,
@@ -322,7 +402,7 @@ The interaction is negative, meaning that the positive relationship between test
 
 #### Representative predictions
 
-The model keeps `schoolweging` continuous. The three lines used in the visualization represent its 25th, 50th, and 75th percentiles.
+The model keeps `schoolweging` continuous. The two lines used in the visualization represent its 25th, 50th, and 75th percentiles.
 
 ```{r moderation-predictions}
 sw_values <- quantile(
@@ -331,22 +411,6 @@ sw_values <- quantile(
   na.rm = TRUE
 )
 
-prediction_data <- expand_grid(
-  pct_test = seq(
-    quantile(model_data$pct_test, 0.05, na.rm = TRUE),
-    quantile(model_data$pct_test, 0.95, na.rm = TRUE),
-    length.out = 100
-  ),
-  schoolweging = as.numeric(sw_values)
-) |>
-  mutate(
-    disadvantage = factor(
-      schoolweging,
-      levels = as.numeric(sw_values),
-      labels = c("Lower disadvantage", "Typical", "Higher disadvantage")
-    ),
-    fit = predict(model_havo, newdata = pick(pct_test, schoolweging))
-  )
 ```
 
 To make the widening gap easier to interpret, we compare the lower- and higher-disadvantage predictions at several test-performance values.
@@ -365,12 +429,27 @@ model_data <- model_data |>
     )
   )
 
-high_reference <- prediction_data |>
+# Extend the fitted lines without changing the observed data.
+x_line <- seq(10, 90, length.out = 200)
+
+prediction_interactive <- expand_grid(
+  pct_test = x_line,
+  disadvantage = c("Lower disadvantage", "Higher disadvantage")
+) |>
+  mutate(
+    schoolweging = if_else(
+      disadvantage == "Lower disadvantage",
+      as.numeric(sw_values[[1]]),
+      as.numeric(sw_values[[3]])
+    ),
+    fit = predict(model_havo, newdata = pick(everything()))
+  )
+
+high_reference <- prediction_interactive |>
   filter(disadvantage == "Higher disadvantage") |>
   select(pct_test, high_fit = fit)
 
-prediction_interactive <- prediction_data |>
-  filter(disadvantage %in% c("Lower disadvantage", "Higher disadvantage")) |>
+prediction_interactive <- prediction_interactive |>
   left_join(high_reference, by = "pct_test") |>
   mutate(
     difference_high = fit - high_fit,
@@ -393,7 +472,6 @@ prediction_interactive <- prediction_data |>
     )
   )
 
-
 gap_70 <- predict(
   model_havo,
   newdata = tibble(
@@ -405,16 +483,9 @@ gap_70 <- predict(
   abs() |>
   round(1)
 
-
 overall_model <- lm(pct_havo_plus ~ pct_test, data = model_data)
 
-overall_data <- tibble(
-  pct_test = seq(
-    quantile(model_data$pct_test, 0.05, na.rm = TRUE),
-    quantile(model_data$pct_test, 0.95, na.rm = TRUE),
-    length.out = 100
-  )
-) |>
+overall_data <- tibble(pct_test = x_line) |>
   mutate(fit = predict(overall_model, newdata = pick(everything())))
 ```
 
@@ -432,7 +503,7 @@ The interactive plot has two states:
 The broad groups used to colour the points are only a visual aid. The model itself continues to use continuous `schoolweging`.
 
 ```{r interactive-data}
-# Title and subtitles
+# Title and subtitles.
 title_text <- paste0(
   "<b>The <span style='color:", group_colors[["Higher disadvantage"]],
   "'>Hidden Gap</span> Between Test Performance",
@@ -454,15 +525,16 @@ subtitle_gap <- paste0(
   "'><b>lower-disadvantage schools</b></span>."
 )
 
-# Methodological notes and attribution
+# Methodological notes and attribution.
 footnote_1 <- paste0(
   "<b>Additional information:</b> Each dot represents one school (N = ",
   format(nrow(model_data), big.mark = ","),
   "). Test results combine the share of pupils reaching target levels",
   "<br>in maths and reading. Lower and higher disadvantage refer to the bottom",
-  " and top 25% of schools by schoolweging. The lines are model predictions",
-  "<br>at the 25th and 75th percentiles. Axes display 0-100% for test",
-  " attainment and 0-80% for HAVO-or-higher advice."
+  " and top 25% of schools by schoolweging. The lines are",
+  "<br>model predictions at the 25th and 75th percentiles.",
+  "Axes display 0-100% for test attainment and 0-80% for HAVO-or-higher ",
+  "advice."
 )
 
 footnote_2 <- paste0(
@@ -616,7 +688,7 @@ interactive_plot <- interactive_plot |>
         yref = "paper",
         xanchor = "left",
         yanchor = "top",
-        yshift = -180,
+        yshift = -160,
         align = "left",
         text = footnote_2,
         showarrow = FALSE,
@@ -670,12 +742,7 @@ interactive_plot <- interactive_plot |>
             method = "update",
             args = list(
               list(
-                visible = c(
-                  TRUE,
-                  FALSE, FALSE,
-                  TRUE,
-                  FALSE, FALSE
-                )
+                visible = c(TRUE, FALSE, FALSE, TRUE, FALSE, FALSE)
               ),
               list(
                 showlegend = FALSE,
@@ -689,12 +756,7 @@ interactive_plot <- interactive_plot |>
             method = "update",
             args = list(
               list(
-                visible = c(
-                  FALSE,
-                  TRUE, TRUE,
-                  FALSE,
-                  TRUE, TRUE
-                )
+                visible = c(FALSE, TRUE, TRUE, FALSE, TRUE, TRUE)
               ),
               list(
                 showlegend = TRUE,
@@ -707,7 +769,7 @@ interactive_plot <- interactive_plot |>
     )
   )
 
-interactive_plot |> theme_interactive()
+interactive_plot |>  theme_interactive()
 
 ```
 

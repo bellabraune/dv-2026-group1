@@ -89,9 +89,16 @@ theme_static <-
         color = group_sec_text
       ),
       axis.title = element_text(
-        face = "bold",
+        size = rel(0.8), 
+        face = "plain",
         color = group_prim_text
       ),
+    # space between the axis titles 
+      axis.title.x = element_text(
+        margin = margin(t = 10)),
+      axis.title.y = element_text(
+        margin = margin(r = 10)),
+      
       axis.text = element_text(color = group_sec_text),
 
       # ---- Background and Grid ----
@@ -99,7 +106,8 @@ theme_static <-
         fill = group_bg_col,
         color = NA
       ),
-      panel.grid.major = element_blank(),
+      panel.grid.major = element_line(
+        color = group_grid_col),
       panel.grid.minor = element_blank(),
 
       # ---- Legend ----
