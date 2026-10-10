@@ -264,7 +264,7 @@ sw |>
   theme(panel.grid.minor = element_blank())
 ```
 
-The distribution is roughly bell-shaped and centred around 29–30 (median = \[29.5\]), with most schools between 22 and 37. There are no extreme outliers, and both tails contain enough schools to compare less and more disadvantaged schools. The spread is also continuous. There is no natural split into a “low” and a “high” group. Thus for the actual analysis school weighting is a treated as a continoius moderator. However, for the final visualisation we draw lines at the 25thand 75th percentiles of school weighting, representing less and more disadvantaged schools.
+The distribution is roughly bell-shaped and centred around 29–30 (median = \[29.5\]), with most schools between 22 and 37. There are no extreme outliers, and both tails contain enough schools to compare less and more disadvantaged schools. The spread is also continuous. There is no natural split into a “low” and a “high” group. Thus for the actual analysis school weighting is a treated as a continuous moderator. However, for the final visualisation we draw lines at the 25th and 75th percentiles of school weighting, representing less and more disadvantaged schools.
 
 ## Moderation analysis
 
