@@ -654,7 +654,29 @@ interactive_plot <- interactive_plot |>
         text = footnote_2,
         showarrow = FALSE,
         font = list(size = 11, color = group_sec_text)
+      ),
+      
+      # arrow pointing at the buttons 
+      list(
+        x = 0,
+        y = 1,
+        xref = "paper",
+        yref = "paper",
+        xshift = 392,
+        yshift = 40,
+        text = "Press to reveal the gap",
+        xanchor = "left",
+        align = "left",
+        font = list(size = 12, color = group_sec_text),
+        showarrow = TRUE,
+        ax = 40,
+        ay = 0,
+        arrowhead = 2,
+        arrowsize = 1,
+        arrowwidth = 2,
+        arrowcolor = group_sec_text
       )
+
     ),
 
     xaxis = list(
