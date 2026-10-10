@@ -129,7 +129,7 @@ Our measure of test results is the percentage of a school’s students who reach
 
 ```{r exploratory-plot-subjects, fig.height = 4.5, fig.width = 6.5, fig.align = "center"}
 
-# Long version: one row per school per subject
+# Dataframe with one row per school per subject
 subject_data <- exploratory_data |>
   filter(!is.na(maths), !is.na(reading)) |>
   pivot_longer(
@@ -264,7 +264,7 @@ sw |>
   theme(panel.grid.minor = element_blank())
 ```
 
-The distribution is roughly bell-shaped and centred around 29–30 (median = \[29.5\]), with most schools between 22 and 37. There are no extreme outliers, and both tails contain enough schools to compare less and more disadvantaged schools. The spread is also continuous. There is no natural split into a “low” and a “high” group. Thus for the actual analysis school weighting is a treated as a continuous moderator. However, for the final visualisation we draw lines at the 25th and 75th percentiles of school weighting, representing less and more disadvantaged schools.
+The distribution is roughly bell-shaped and centred around 29–30 (median = \[29.5\]), with most schools between 22 and 37. There are no extreme outliers, and both tails contain enough schools to compare less and more disadvantaged schools. The spread is also continuous. There is no natural split into a “low” and a “high” group. Thus for the actual analysis school weighting is a treated as a continoius moderator. However, for the final visualisation we draw lines at the 25thand 75th percentiles of school weighting, representing less and more disadvantaged schools.
 
 ## Moderation analysis
 
@@ -283,10 +283,12 @@ advice_cols <- c(
 )
 
 # Only suppressed values are imputed here; other missing values remain NA.
+# This was changed based on the feedback from the first part.
 to_num <- function(x) {
   if_else(x == "<5", 2.5, suppressWarnings(as.numeric(x)))
 }
 
+# Getting the advice data
 advice_data <- schooladviezen |>
   mutate(
     inst = adv_ids[[1]],
@@ -434,6 +436,9 @@ overall_model <- lm(pct_havo_plus ~ pct_test, data = model_data)
 
 overall_data <- tibble(pct_test = x_line) |>
   mutate(fit = predict(overall_model, newdata = pick(everything())))
+
+overall_model
+overall_data
 ```
 
 The predicted gap is relatively small when test performance is low but becomes wider as performance increases. For example, when 70% of pupils reach the target reference levels, the model predicts approximately 47% HAVO+ advice at the lower-disadvantage value, compared with 39% at the higher-disadvantage value. That is a difference of around 8 percentage points, despite the same overall test performance.
