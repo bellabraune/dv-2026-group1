@@ -33,6 +33,8 @@ source(here::here("scripts", "01-get-data.R"))
 source(here::here("scripts", "02-custom_themes.R"))
 ```
 
+**Github link: https://github.com/bellabraune/dv-2026-group1.git**
+
 ## Research question
 
 **Do schools with similar test results give similar secondary-school advice? (inference)**
