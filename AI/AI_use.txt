@@ -14,14 +14,6 @@ Verification: We decided to make it clear to eachother where AI-generated code w
 This way we were able to check if we all understood the code and if it follows our goals
 
 
-Models used: Claude Opus 5.5,  GPT 6, Qwen3.8 27b
-
-Throughout the process we mostly used AI for data understanding and for improving the visualizations when we were unsure on how to put our ideas in practice.
-Qwen3.8 was used locally for data understanding and for producing the initial AI_CONTEXT file. It was then used for code ideas, cleanup and debugging. 
-Qwen was used with OpenCode and had access to a local AGENTS.md file containing rules for working within the project and on code styling, etc.
-Claude and GPT were used for longer, context heavy chats where we would brainstorm ideas, discuss data transfortmation and how to add specific things to the visualizations
-which we were not sure how to do. Thes emodels were especially useful when paired with the AI_CONTEXT file as this allowed us to add much context on the project and data
-which made it so the models would generally give us more accurate responses based on our specific use.
-No text for the report was produced using AI.
+Models used:
 
 

@@ -631,29 +631,7 @@ interactive_plot <- interactive_plot |>
         text = footnote_2,
         showarrow = FALSE,
         font = list(size = 11, color = group_sec_text)
-      ),
-      
-      # arrow pointing at the buttons 
-      list(
-        x = 0,
-        y = 1,
-        xref = "paper",
-        yref = "paper",
-        xshift = 392,
-        yshift = 40,
-        text = "Press to reveal the gap",
-        xanchor = "left",
-        align = "left",
-        font = list(size = 12, color = group_sec_text),
-        showarrow = TRUE,
-        ax = 40,
-        ay = 0,
-        arrowhead = 2,
-        arrowsize = 1,
-        arrowwidth = 2,
-        arrowcolor = group_sec_text
       )
-
     ),
 
     xaxis = list(
@@ -741,17 +719,3 @@ Our results suggest that school disadvantage is associated with how closely seco
 However, these are school-level comparisons. We cannot conclude that individual pupils with identical test results receive different advice because of their socioeconomic background. Other differences between schools may also contribute to the pattern, especially considering the differences in test providers and how these are interpreted, which is an important debate now.
 
 Nevertheless, the analysis shows that test performance alone does not fully explain differences in secondary-school advice, and that school disadvantage is relevant to understanding them.
-
-### References  
-Dienst Uitvoering Onderwijs. (2025a). *Leerlingen per referentieniveau taal en rekenen*. Ministerie van Onderwijs, Cultuur en Wetenschap. https://duo.nl/open_onderwijsdata/primair-onderwijs/aantal-leerlingen/leerlingen-referentieniveau-taal-rekenen.jsp.  
-  
-Dienst Uitvoering Onderwijs. (2025b). *Schooladviezen*. Ministerie van Onderwijs, Cultuur en Wetenschap.  
-  https://duo.nl/open_onderwijsdata/primair-onderwijs/aantal-leerlingen/schooladviezen.jsp  
-  
-Inspectie van het Onderwijs. (2026). *Schoolweging 2022/2023 - 2023/2024 - 2024/2025*. Ministerie van Onderwijs, Cultuur en Wetenschap.  
-  https://www.onderwijsinspectie.nl/documenten/2026/02/09/schoolweging-2022-2023---2023-2024---2024-2025  
-
-Ministerie van Onderwijs, Cultuur en Wetenschap. (2026, March 30). *Doorstroomtoets in het
-  basisonderwijs*. https://www.ocwincijfers.nl/sectoren/primair-onderwijs/leerlingen/prestaties-eindtoets 
-
-
