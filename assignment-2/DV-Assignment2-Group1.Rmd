@@ -35,26 +35,19 @@ source(here::here("scripts", "02-custom_themes.R"))
 
 ## Research question
 
-Do schools with similar test results give similar secondary-school advice?
+**Do schools with similar test results give similar secondary-school advice? (inference)**
 
-Level: Inference
+At the end of primary school, pupils receive advice on which secondary-school track to follow. This advice combines teacher judgment with results from the *doorstroomtoets*. We examine whether schools with similar test performance give similar advice, and whether this relationship differs with the socioeconomic composition of their pupils (*schoolweging*).
 
-Target audience: Policymakers.
-
-Relate a measure of the school’s advice (e.g. pct_havo_plus) to a measure of its test results (pct_maths_1s and/or pct_reading_2f), and test whether schoolweging moderates this relationship. Do two schools with the same results give the same advice, regardless of who their students are?
-
-### Why does it matter whether similar test results give similar secondary-school advice?
-
-Every primary-school pupil receives a secondary-track advice at the end of group 8 (PRO, VMBO, HAVO, or VWO) that sets their entire secondary trajectory. This advice is based on the teacher's judgment and on the doorstroomtoets, a standardized test designed to be comparable across schools. We ask whether, holding test performance constant, a school's advice still depends on how socio-economically disadvantaged its student body is (`schoolweging`). Concretely, we relate each school's share of students advised to HAVO/VWO to its share reaching the reference level in maths and/or reading, and test whether `schoolweging` shifts that relationship. It matters because if disadvantaged schools systematically assign lower tracks to students with the same demonstrated performance, then a standardized test is failing its purpose and students are being pushed down the track on the basis of context rather than ability, a live fairness concern in the Dutch debate over transfer advice.
-
-### Who is the target audience of this report and advice?
-
-Our primary audience is **policymakers and the general public** (a newspaper-graphic reader), with school boards as a secondary audience. Since this reader is not a statistician, the visualization must carry *one* legible conclusion (advice tracks test results, and disadvantage shifts it by this much) expressed in concrete, relatable units (e.g. percentage points of students advised upward) rather than coefficients or p-values. That pushes us toward a small number of clear encodings (a fit for advantaged vs. disadvantaged schools, or a gap/residual line) and toward a single highlighted pattern, rather than a dense multivariate plot.
+Our main audience is policymakers and the general public. We therefore aim to show differences in the percentage of pupils receiving HAVO-or-higher advice, rather than focusing on regression coefficients.
 
 ## Data Processing
 
-Below are the the main variables we're building that will support the rest of the data analysis and visualization for answering the research question. Some things to note about our data processing at this stage: 1. Dienst Uitvoering Onderwijs (DUO, 2025a, 2025b) replaces counts below 5 with “\<5” to protect privacy. Dropping these would remove most small schools, so we replace them with 2.5, the midpoint of the possible values 1–4. 2. To calculate the share of students advised HAVO or higher, we divide by all students who received advice. Students for whom no advice was possible, for whatever reason, are excluded (the ADVIES_NIET_MOGELIJK category). Since our outcome is the advice a school gives, these students have no outcome to count. This definition is applied throughout the data processing in this report.
-Below are the main variables we're building that will support the rest of the data analysis and visualization for answering the research question. Some things to note about our data processing at this stage: 1. DUO replaces counts below 5 with “\<5” to protect privacy. Dropping these would remove most small schools, so we replace them with 2.5, the midpoint of the possible values 1–4. 2. To calculate the share of students advised HAVO or higher, we divide by all students who received advice. Students for whom no advice was possible, for whatever reason, are excluded (the ADVIES_NIET_MOGELIJK category). Since our outcome is the advice a school gives, these students have no outcome to count. This definition is applied throughout the data processing in this report.
+After understanding the data and producing our AI_CONTEXT.md file with all the specifications of the datasets we start processing the data in order to work with it.
+
+DUO suppresses counts below five for privacy (DUO, 2025a, 2025b). Rather than dropping these observations, which would remove information from many schools, we replace them with 2.5, the midpoint of the possible values (1–4).
+
+To calculate HAVO+ advice, we combine the HAVO, HAVO/VWO, and VWO categories. HAVO/VWO counts fully because both tracks meet the HAVO threshold, whereas VMBO-GT/HAVO is excluded because it includes a lower track. We divide this total by the number of pupils receiving advice, excluding those for whom no advice was recorded (`ADVIES_NIET_MOGELIJK`).
 
 ```{r prepare-exploratory-data}
 
@@ -131,7 +124,7 @@ sw <- schoolweging |>
 
 ### Exploring test results and school advice
 
-Our measure of test results is the percentage of a school’s students who reach the target reference level (DUO, 2025a). Unlike raw test scores, reference levels are comparable across the six test providers. Two subjects have a target level: maths (1S) and reading (2F). Ideally we would summarise them in one measure by averaging the two percentages. That only makes sense if advice responds to both subjects in a similar way, though. The subjects measure different skills, and their target levels may differ in difficulty. If advice depends more on one subject than the other, an average would blur what “schools with the same test results” means, and that comparison is the core of our research question. Figure 1 therefore relates each school’s share of students advised HAVO or higher to its share reaching the maths target and the reading target, separately.
+To measure test performance, we used the percentage of students reaching the target reference levels in maths (1S) and reading (2F), which are comparable across test providers (DUO, 2025a). Before combining them into one measure, we checked whether they showed similar relationships with HAVO+ advice, as averaging could otherwise hide important differences (Figure 1).
 
 ```{r exploratory-plot-subjects, fig.height = 4.5, fig.width = 6.5, fig.align = "center"}
 
@@ -184,7 +177,7 @@ subject_data |>
   )
 ```
 
-Figure 1 shows that advice relates equally strongly to maths and reading (both r = 0.61). Table 1 shows that in a regression with both subjects, their coefficients are practically identical (0.59 each), so advice does not depend more on one subject. The reading line lies lower only because its target is reached more often. We therefore average the two subjects into one test-result measure. Because the data are at school level, this describes how a school’s advice relates to its overall results, not how individual students are advised.
+Figure 1 shows similar relationships for maths and reading (both r = 0.61), suggesting that neither subject has a substantially stronger association with HAVO+ advice. We therefore averaged the two percentages into one test-performance measure for the remaining analysis.
 
 ```{r exploratory-plot-average, fig.height = 4.5, fig.width = 6.5, fig.align = "center"}
 
@@ -224,13 +217,14 @@ summary(fit_ref)
 
 ```
 
-Figure 2 shows that across the 5,921 schools, the relationship between test result and advice is clearly positive (correlation 0.69): schools whose students reach the reference level in maths and reading advise a larger share of them to HAVO or VWO. Test results significantly predicted advice, b = \[0.76\], SE = 0.01, t(\[5919\]) = 73.241, p \< .001. This suggests that a school where 10 percentage points more students reach the target level, ends up advising on average about 7.6 percentage points more of its students to HAVO or higher. Thus, on the whole, advice follows test results. However, test results account for only about half of the differences in advice between schools (R² = 0.48). Schools with the same test results still differed by about 12 percentage points in their advice (residual SE = 11.7). This suggests that factors other than test results also shape the advice a school gives.
+Figure 2 shows a strong positive relationship between test performance and HAVO+ advice across 5,921 schools (r = 0.69). A 10-percentage-point increase in test performance was associated with approximately 7.6 percentage points more HAVO+ advice (b = 0.76).
+
+However, test performance explained only 48% of the variation in advice (R² = 0.48), with substantial variation remaining around the fitted line (residual SE = 11.6 percentage points). This led us to investigate whether school disadvantage could help explain these differences.
 
 ### Exploring school weighting
 
-After finding that test results explain only about half of the differences in advice between schools, we turned to school weighting as a possible explanation for the rest. We could add school weighting to the model as a second predictor. However, that would assume that disadvantaged schools differ from other schools by the same amount at every level of test results. Our research question asks whether the relationship between test results and advice itself is the same across schools, regardless of how disadvantaged their students are. We therefore model school weighting as a moderator, by including an interaction between test results and school weighting. This allows the gap in advice between more and less disadvantaged schools to change with test performance, and lets us test whether it does instead of assuming it is constant.
+We chose to investigate schoolweging, a measure of the socioeconomic disadvantage of a school's student population, where higher values indicate greater disadvantage. Rather than examining whether disadvantage is simply associated with higher or lower advice, we wanted to see whether it changes the relationship between test performance and HAVO+ advice.
 
-Before testing whether school weighting moderates the relationship between test results and advice, we examined its distribution (Figure 3). We wanted to know whether schools differ enough in school weighting to compare them, and whether some ranges, particularly the most disadvantaged schools, are represented by only a few schools.
 
 ```{r exploratory-plot-weighting, fig.height = 4, fig.width = 6, fig.align = "center"}
 
@@ -267,22 +261,15 @@ sw |>
   theme(panel.grid.minor = element_blank())
 ```
 
-The distribution is roughly bell-shaped and centred around 29–30 (median = \[29.5\]), with most schools between 22 and 37. There are no extreme outliers, and both tails contain enough schools to compare less and more disadvantaged schools. The spread is also continuous. There is no natural split into a “low” and a “high” group. Thus for the actual analysis, school weighting is a treated as a continuous moderator. However, for the final visualisation we draw lines at the 25th and 75th percentiles of school weighting, representing less and more disadvantaged schools.
+Figure 3 shows that school weighting is continuously distributed around a median of approximately 29.5, without a clear cutoff between more and less disadvantaged schools. We therefore kept it continuous in our moderation model rather than dividing schools into categories.
 
 ## Moderation analysis
 
-For the moderation analysis, we combined the school advice, reference-level attainment, and school weighting datasets. We used the average percentage reaching the target levels in maths (1S) and reading (2F) as our measure of test performance, as established in the exploratory analysis.
-
 ### Prepare the analysis data
 
-**"\<5" counts:** As before, suppressed counts (`<5`) were replaced with 2.5. We then combined the datasets using school identifiers and excluded schools with missing values for the variables used in the model.
+For the moderation analysis, we combined the advice and test-performance data with school weighting. However, the school-weighting file uses different location identifiers, so we could only match schools by their main school code. For schools with multiple locations, we assigned the weighting of the first listed location to all of them.
 
-**"\<5" counts:** As before, suppressed counts (`<5`) were replaced with 2.5. We then combined the datasets using school identifiers and excluded schools with missing values for the variables used in the model.
-
-**HAVO+ variable:** To measure HAVO-or-higher advice (DUO, 2025b), we combined the HAVO, HAVO/VWO, and VWO categories and divided their total by the number of pupils receiving advice. Although HAVO/VWO is a mixed recommendation, both tracks meet the HAVO threshold, so these pupils are counted in full rather than split between the categories. VMBO-GT/HAVO advice was excluded because it also includes a track below HAVO. This gives us a consistent measure of the percentage of pupils whose advice is entirely at HAVO level or higher.
-
-**School Weighting Variable:** In the exploratory analysis, we only looked at the distribution of school weighting on its own, without linking it to the other data. For the model, we link it to the advice and test data. The three DUO files share the school code (INSTELLINGSCODE) and location code (VESTIGINGSCODE), but the school weighting file (Inspectie van het Onderwijs, 2026) uses its own identifier (OVT), formatted like “00AP\|C1”. The part before the “\|” is the school code, and the part after does not follow the same location numbering as the DUO files. We therefore match on the school code only. When a school has several locations with a school weighting, we keep the weighting of the first location listed and assign it to all locations of that school. This affects 305 out of 5873 school locations. For most of them, the difference is small: locations of the same school differ by a median of 2.2 points in school weighting, compared to a range of roughly 22–37 across schools. A few schools, however, have locations that differ by up to 14.7 points, so for those schools the assigned weighting may not reflect every location well. Finally, schools without a disadvantage weighting are excluded from the data.
-**School Weighting Variable:** In the exploratory analysis, we only looked at the distribution of school weighting on its own, without linking it to the other data. For the model, we link it to the advice and test data. The three DUO files share the school code (INSTELLINGSCODE) and location code (VESTIGINGSCODE), but the school weighting file uses its own identifier (OVT), formatted like “00AP\|C1”. The part before the “\|” is the school code,and the part after does not follow the same location numbering as the DUO files. We therefore match on the school code only. When a school has several locations with a school weighting, we keep the weighting of the first location listed and assign it to all locations of that school. This affects 305 out of 5873 school locations. For most of them, the difference is small: locations of the same school differ by a median of 2.2 points in school weighting, compared to a range of roughly 22–37 across schools. A few schools, however, have locations that differ by up to 14.7 points, so for those schools the assigned weighting may not reflect every location well. Finally, schools without a disadvantage weighting are excluded from the data.
+This affected 305 of 5,873 locations. Although the median difference in weighting between locations of the same school was only 2.2 points, some differed by as much as 14.7. The assigned weighting may therefore be inaccurate for some locations. Schools without weighting data were excluded.
 
 ```{r prepare-moderation-data}
 
@@ -353,15 +340,11 @@ model_results <- tibble(
 model_results
 ```
 
-The model explained approximately 53% of the variation in HAVO-or-higher advice between schools (R² = 0.53). The interaction coefficient was negative (b = −0.033), suggesting that the positive relationship between test performance and HAVO+ advice becomes weaker as school disadvantage increases.
-
-In other words, schools with lower disadvantage show a steeper increase in HAVO+ advice as test performance rises. For more disadvantaged schools, this increase is smaller. This means that the predicted difference in advice between the two becomes larger at higher levels of test performance.
+The model explained approximately 53% of the variation in HAVO+ advice (R² = 0.58). The negative interaction (b = −0.035) indicates that the relationship between test performance and HAVO+ advice becomes weaker as disadvantage increases. In other words, advice increases more slowly with test performance in more disadvantaged schools.
 
 #### Representative predictions
 
-Although the interaction tells us how the relationship changes, its coefficient is not particularly intuitive. We therefore calculated model predictions at two representative levels of school disadvantage: the 25th and 75th percentiles of `schoolweging` (approximately 27.4 and 31.8).
-
-We chose these values because they represent meaningful differences in disadvantage without relying on the extremes of the distribution. Importantly, these are only reference values for the visualization. School weighting remains continuous in the model.
+To make this interaction easier to interpret, we calculated predictions at the 25th and 75th percentiles of school weighting (27.4 and 31.8). These represent relatively lower and higher disadvantage without relying on extreme values. School weighting remains continuous in the model.
 
 ```{r moderation-predictions}
 sw_values <- quantile(
@@ -371,8 +354,6 @@ sw_values <- quantile(
 )
 
 ```
-
-To see what this means in practice, we compared the predicted percentage of HAVO+ advice at different levels of test performance.
 
 ```{r moderation-gap-check}
 model_data <- model_data |>
@@ -450,19 +431,15 @@ overall_model
 overall_data
 ```
 
-The predicted gap is relatively small when test performance is low but becomes wider as performance increases. For example, when 70% of pupils reach the target reference levels, the model predicts approximately 47% HAVO+ advice at the lower-disadvantage value, compared with 39% at the higher-disadvantage value. That is a difference of around 8 percentage points, despite the same overall test performance.
-
-This is the main finding we wanted to communicate in our visualization: similar test results do not necessarily correspond to similar advice, and the differences appear to increase at higher levels of performance.
+At 70% test attainment, the model predicts approximately 56% HAVO+ advice at lower disadvantage, compared with 47% at higher disadvantage. This 9-percentage-point gap illustrates our main finding: schools with similar test results can give different proportions of HAVO+ advice, with the predicted gap widening at higher performance levels.
 
 ### Interactive visualization
 
-For the final visualization, we wanted to make this difference visible without requiring readers to interpret regression coefficients.
+We designed the interactive visualization to make the moderation results understandable without relying on regression coefficients. It initially shows the overall relationship between test performance and HAVO+ advice. Readers can then switch to predictions for lower and higher school disadvantage to see how the relationship changes.
 
-We decided to start with the overall relationship between test performance and HAVO+ advice as it is somewhat easy to interpret. The interactive button then introduces school disadvantage, replacing the overall regression line with two predictions from the moderation model. Our intention was that the reader/viewer could uncover the differences based on school disadvantage themselves.
+We chose two representative lines to make the difference clear without overcrowding the graph. Individual schools remain visible to show the variation around the predictions, while highlighting the lowest and highest quarters of school weighting helps readers connect the model to the observed data.
 
-We chose to show only the 25th and 75th percentiles rather than several lines. This makes the widening gap easier to see without overcrowding the graph. The individual schools remain visible to show the variation around the predictions, with the lower- and higher-disadvantage groups highlighted when the comparison is activated.
-
-We also added hover information showing the predicted HAVO+ percentage and its difference from the higher-disadvantage reference. This allows readers to explore the size of the gap in percentage points rather than estimating it visually. During testing, the base hover option on the plot was quite unreliable as it requires the reader to point exactly at the line and it does not work at some angles. Therefore, we recommend using the secondary option that picks up the closest hover information.
+Finally, hover labels show predicted HAVO+ advice and its difference from the higher-disadvantage reference in percentage points, making the comparison easier to interpret.
 
 ```{r interactive-data}
 # Title and subtitles.
