@@ -53,7 +53,7 @@ To calculate HAVO+ advice, we combine the HAVO, HAVO/VWO, and VWO categories. HA
 
 # the count columns are character ("<5" privacy suppression) -> numeric first
 advice_cols <- c(
-   "VSO", "PRO", "VMBO_B", "VMBO_B_K", "VMBO_K", "VMBO_K_GT", "VMBO_GT",
+  "VSO", "PRO", "VMBO_B", "VMBO_B_K", "VMBO_K", "VMBO_K_GT", "VMBO_GT",
   "VMBO_GT_HAVO", "HAVO", "HAVO_VWO", "VWO"
 )
 
@@ -300,7 +300,7 @@ weighting_data <- schoolweging |>
 multi_location <- schoolweging |>
   filter(!is.na(schoolweging)) |>
   count(inst = sub("\\|.*$", "", OVT)) |>
-  filter( n > 1)
+  filter(n > 1)
 
 # how much do locations of the same school differ in school weighting?
 schoolweging |>
@@ -320,7 +320,8 @@ model_data <- advice_data |>
 
 cat("Number of rows in the moderation dataframe:", n_distinct(model_data))
 
-cat("School locations in the model affected by the first-location choice:", sum(model_data$inst %in% multi_location$inst), "of", nrow(model_data))
+cat("School locations in the model affected by the first-location choice:",
+    sum(model_data$inst %in% multi_location$inst), "of", nrow(model_data))
 
 head(model_data)
 ```
@@ -707,9 +708,7 @@ interactive_plot <- interactive_plot |>
     )
   )
 
-interactive_plot |>
-  theme_interactive()
-
+interactive_plot |> theme_interactive()
 ```
 
 ### Conclusion
